@@ -1,21 +1,19 @@
+from py_reportit.service.reportit_api import ReportItService
+from py_reportit.config import config
 from py_reportit.config.db import engine
 from py_reportit.repository.report import ReportRepository
-from py_reportit.model.meta import Meta
-from py_reportit.model.report import Report
+from py_reportit.post_processors import post_processors
 from sqlalchemy.orm import Session
-
-import requests
 
 session = Session(engine)
 report_repository = ReportRepository(session)
+api_service = ReportItService(config)
 
 
-r = requests.get('https://reportit.vdl.lu/api/get.php')
-reports = list(map(lambda rawReport: Report(**rawReport, meta=Meta()), r.json().get('reports')))
-
-#reports = report_repository.get_by_id(20700)
-
+reports = api_service.get_reports()
 report_repository.update_or_create_all(reports)
 
+for pp in post_processors:
+    pp(config, report_repository).process()
 
 session.close()
