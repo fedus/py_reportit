@@ -1,10 +1,8 @@
 from py_reportit.config.db import engine
-from py_reportit.model.orm_base import Base
-from py_reportit.model.meta import Meta
-from py_reportit.model.report import Report
+from py_reportit.model import *
 
 def createTables():
-    Base.metadata.create_all(engine)
+    orm_base.Base.metadata.create_all(engine)
 
 if __name__ == '__main__':
     print('Select operation to execute:')
