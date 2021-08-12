@@ -13,6 +13,9 @@ class ReportRepository:
     def get_by_id(self, id: int) -> Report:
         return self.session.execute(select(Report).where(Report.id==id)).scalar()
 
+    def get_by(self, *where_clauses) -> list[Report]:
+        return self.session.execute(select(Report).where(*where_clauses)).scalars().all()
+
     def update(self, report: Report) -> int:
         result = self.session.execute(
             update(Report)

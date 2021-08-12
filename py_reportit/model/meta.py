@@ -13,8 +13,5 @@ class Meta(Base):
     thumb_downloaded = Column(Boolean, default=False, server_default=text('false'), nullable=False)
 
     def __repr__(self):
-        return f'<Report-It id={self.id!r}>'
+        return f'<Meta id={self.id!r}>'
 
-    @property
-    def has_title(self):
-        return self.title != None and self.title != ""
