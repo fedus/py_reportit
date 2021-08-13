@@ -137,5 +137,5 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# Dotenv files
-*.env
+# Dotenv files with secrets
+*secrets.*.env

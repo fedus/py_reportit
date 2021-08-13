@@ -40,6 +40,8 @@ class Twitter(AbstractPostProcessor):
         title = f"{report.title}\n" if report.has_title else ""
         text = f"{report.created_at.strftime('%Y-%m-%d')}\n{title}\n{report.description}"
         self.tweet_service.tweet_thread(text, report.latitude, report.longitude, media_filename=media_filename)
+        report.meta.tweeted = True
+        self.report_repository.session.commit()
 
 
 class TweetService:

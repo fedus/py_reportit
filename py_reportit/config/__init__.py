@@ -1,5 +1,9 @@
-from py_reportit.config.db import db
-from py_reportit.config.reportit_api import reportit_api_config
-from py_reportit.config.post_processors import post_processors_config
+import os
 
-config = { **db, **reportit_api_config, **post_processors_config }
+from dotenv import dotenv_values
+
+config = {
+    **dotenv_values(".secrets.dev.env"),
+    **dotenv_values(".shared.dev.env"),
+    **os.environ,
+}
