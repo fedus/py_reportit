@@ -9,7 +9,7 @@ from py_reportit.post_processors import post_processors
 from sqlalchemy.orm import Session
 
 logging.basicConfig(encoding='utf-8')
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"py_reportit")
 logger.setLevel(logging.DEBUG)
 
 session = Session(engine)

@@ -25,4 +25,4 @@ class Report(Base):
 
     @property
     def has_title(self):
-        return self.title != None and self.title != ""
+        return self.title != None and self.title != "" and self.title != "title"
