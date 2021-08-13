@@ -19,7 +19,6 @@ class Twitter(AbstractPostProcessor):
         self.tweet_service = TweetService(self.config)
 
     def process(self):
-        logger.info("Starting Twitter post processor")
         delay = int(self.config.get("TWITTER_DELAY_SECONDS"))
         unprocessed_reports = self.report_repository.get_by(Report.meta.has(Meta.tweeted==False))
         logger.info("Processing %d reports", len(unprocessed_reports))
@@ -56,14 +55,17 @@ class TweetService:
         )
 
     def do_authentication(self, consumer_key, consumer_secret, access_token, access_token_secret):
+        logger.debug("Setting Twitter authentication")
         auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
         auth.set_access_token(access_token, access_token_secret)
         self.api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 
     def upload_media(self, filename):
+        logger.debug(f"Uploading media with filename {filename}")
         return self.api.media_upload(filename=filename)
 
     def tweet_thread(self, text, lat, lon, media_filename=None):
+        logger.debug("Sending tweet (as thread if necessary)")
         media = None
         if media_filename:
             media = self.upload_media(media_filename)
@@ -83,5 +85,8 @@ class TweetService:
                 tweet_params['in_reply_to_status_id'] = last_status.id
                 tweet_params['auto_populate_reply_metadata'] = True
             logger.debug(f'Tweeting with params: {tweet_params}')
-            last_status = self.api.update_status(**tweet_params)
+            if self.config.get("DEV"):
+                logger.debug("Not sending tweet since program is running in development mode")
+            else:
+                last_status = self.api.update_status(**tweet_params)
 
