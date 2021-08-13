@@ -22,5 +22,4 @@ report_repository.update_or_create_all(reports)
 for pp in post_processors:
     pp(config, report_repository).process()
 
-session.commit()
 session.close()
