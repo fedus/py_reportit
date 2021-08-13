@@ -37,8 +37,8 @@ class Twitter(AbstractPostProcessor):
     def tweet_report(self, report: Report):
         logger.info("Tweeting %s", report)
         media_filename = f"{self.config.get('PHOTO_DOWNLOAD_FOLDER')}/{report.id}.jpg" if report.photo_url != None else None
-        title = f"{report.title}\n\n" if report.has_title else ""
-        text = f"TEST -- {report.created_at.strftime('%Y-%m-%d')}\n\n{title}{report.description}"
+        title = f"{report.title}\n" if report.has_title else ""
+        text = f"{report.created_at.strftime('%Y-%m-%d')}\n{title}\n{report.description}"
         self.tweet_service.tweet_thread(text, report.latitude, report.longitude, media_filename=media_filename)
 
 
