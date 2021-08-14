@@ -90,4 +90,4 @@ class CrawlerService:
         logger.info("Running post processors")
         for pp in self.post_processors:
             logger.info(f"Running post processor {pp}")
-            pp(self.config, self.report_repository).process()
+            pp(self.config, self.report_repository, self.meta_repository, self.crawl_result_repository).process()

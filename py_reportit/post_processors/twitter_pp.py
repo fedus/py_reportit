@@ -70,7 +70,7 @@ class TweetService:
         logger.debug(f"Uploading media with filename {filename}")
         return self.api.media_upload(filename=filename)
 
-    def tweet_thread(self, text, lat, lon, media_filename=None):
+    def tweet_thread(self, text, lat=None, lon=None, media_filename=None):
         logger.debug("Sending tweet (as thread if necessary)")
         media = None
         if media_filename:
@@ -84,12 +84,16 @@ class TweetService:
         last_status = None
         for index, part in enumerate(parts):
             logger.debug(f"Tweeting part {index+1}/{len(parts)}")
-            tweet_params = { 'status': part, 'lat': lat, 'long': lon, 'display_coordinates': True }
+            tweet_params = { 'status': part }
             if index == 0 and media:
                 tweet_params['media_ids'] = [media.media_id]
             if index > 0 and last_status:
                 tweet_params['in_reply_to_status_id'] = last_status.id
                 tweet_params['auto_populate_reply_metadata'] = True
+            if lat and lon:
+                tweet_params['lat'] = lat
+                tweet_params['long'] = lon
+                tweet_params['display_coordinates'] = True
             logger.debug(f'Tweeting with params: {tweet_params}')
             if self.config.get("DEV"):
                 logger.debug("Not sending tweet since program is running in development mode")

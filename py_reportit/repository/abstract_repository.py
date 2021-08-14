@@ -10,6 +10,7 @@ class AbstractRepository(ABC):
 
     def __init__(self, session: Session):
         self.session = session
+        super().__init__()
 
     def get_all(self) -> list[repository_type]:
         return self.session.execute(select(self.repository_type)).scalars().all()
