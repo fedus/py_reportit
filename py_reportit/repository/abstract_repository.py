@@ -1,12 +1,14 @@
 from abc import ABC, abstractmethod
 
 from sqlalchemy import select, update
+from sqlalchemy.orm import Session
+from sqlalchemy.sql.functions import func
 
 class AbstractRepository(ABC):
 
     repository_type = None
 
-    def __init__(self, session):
+    def __init__(self, session: Session):
         self.session = session
 
     def get_all(self) -> list[repository_type]:
@@ -50,3 +52,6 @@ class AbstractRepository(ABC):
         )
         self.session.commit()
         return result.rowcount
+
+    def get_most_recent(self) -> repository_type:
+        return self.session.execute(select(self.repository_type).filter(self.repository_type.id == self.session.query(func.max(self.repository_type.id)).scalar())).scalar()
