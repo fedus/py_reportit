@@ -1,6 +1,9 @@
 import logging
 
 from datetime import datetime
+from py_reportit.repository.crawl_result import CrawlResultRepository
+from py_reportit.repository.meta import MetaRepository
+from py_reportit.service.crawler import CrawlerService
 
 from py_reportit.service.reportit_api import ReportItService
 from py_reportit.config import config
@@ -16,19 +19,17 @@ logger.setLevel(config.get("LOG_LEVEL"))
 logger.info(f"py_reportit started at {datetime.now()}")
 
 session = Session(engine)
-report_repository = ReportRepository(session)
-api_service = ReportItService(config)
 
-logger.info("Fetching reports")
-reports = api_service.get_reports()
+crawler = CrawlerService(
+    config,
+    post_processors,
+    ReportRepository(session),
+    MetaRepository(session),
+    CrawlResultRepository(session),
+    ReportItService(config)
+)
 
-logger.info(f"{len(reports)} reports fetched")
-report_repository.update_or_create_all(reports)
-
-logger.info("Running post processors")
-for pp in post_processors:
-    logger.info(f"Running post processor {pp}")
-    pp(config, report_repository).process()
+crawler.crawl()
 
 session.close()
 logger.info("Exiting")

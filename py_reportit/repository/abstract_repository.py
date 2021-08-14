@@ -41,3 +41,12 @@ class AbstractRepository(ABC):
     def create_all(self, entities: list[repository_type]) -> None:
         self.session.add_all(entities)
         self.session.commit()
+
+    def update_many(self, values: dict, *where_clauses) -> int:
+        result = self.session.execute(
+            update(self.repository_type)
+            .where(*where_clauses)
+            .values(values)
+        )
+        self.session.commit()
+        return result.rowcount
