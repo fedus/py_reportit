@@ -1,1 +1,1 @@
-__all__ = ["orm_base", "meta", "report"]
+__all__ = ["orm_base", "meta", "report", "crawl_result"]
