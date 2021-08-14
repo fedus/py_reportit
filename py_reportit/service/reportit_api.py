@@ -10,4 +10,4 @@ class ReportItService:
 
     def get_reports(self) -> list[Report]:
         r = requests.get(self.config.get('REPORTIT_API_URL'))
-        return list(map(lambda rawReport: Report(**rawReport, meta=Meta()), r.json().get('reports')))
+        return list(map(lambda rawReport: Report(**rawReport, meta=Meta(is_online=True)), r.json().get('reports')))

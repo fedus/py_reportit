@@ -55,3 +55,6 @@ class AbstractRepository(ABC):
 
     def get_most_recent(self) -> repository_type:
         return self.session.execute(select(self.repository_type).filter(self.repository_type.id == self.session.query(func.max(self.repository_type.id)).scalar())).scalar()
+
+    def count_by(self, *where_clauses) -> int:
+        return self.session.execute(select(func.count()).select_from(select(self.repository_type).filter(*where_clauses).subquery())).scalars().one()

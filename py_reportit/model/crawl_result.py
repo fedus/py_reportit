@@ -11,7 +11,6 @@ class CrawlResult(Base):
     total = Column(Integer)
     added = Column(Integer)
     removed = Column(Integer)
-    modified = Column(Integer)
     marked_done = Column(Integer)
     highest_id = Column(Integer)
     lowest_id = Column(Integer)
