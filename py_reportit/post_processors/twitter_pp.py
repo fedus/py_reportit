@@ -7,6 +7,7 @@ from textwrap import wrap
 
 from py_reportit.post_processors.abstract_pp import AbstractPostProcessor
 from py_reportit.model.report import Report
+from py_reportit.model.crawl_result import CrawlResult
 from py_reportit.model.meta import Meta
 
 
@@ -35,8 +36,17 @@ class Twitter(AbstractPostProcessor):
                 else:
                     logger.debug("Sleeping for %d seconds", delay)
                     sleep(delay)
+        last_crawl_result: CrawlResult = self.crawl_result_repository.get_most_recent()
+        if last_crawl_result and last_crawl_result.successful and (last_crawl_result.added or last_crawl_result.removed or last_crawl_result.marked_done):
+            try:
+                self.tweet_crawl_result(last_crawl_result)
+            except KeyboardInterrupt:
+                raise
+            except:
+                logger.error("Unexpected error:", sys.exc_info()[0])
 
-    def tweet_report(self, report: Report):
+
+    def tweet_report(self, report: Report) -> None:
         logger.info("Tweeting %s", report)
         media_filename = f"{self.config.get('PHOTO_DOWNLOAD_FOLDER')}/{report.id}.jpg" if report.photo_url != None else None
         title = f"{report.title}\n" if report.has_title else ""
@@ -44,6 +54,17 @@ class Twitter(AbstractPostProcessor):
         self.tweet_service.tweet_thread(text, report.latitude, report.longitude, media_filename=media_filename)
         report.meta.tweeted = True
         self.report_repository.session.commit()
+
+    def tweet_crawl_result(self, crawl_result: CrawlResult) -> None:
+        parts = ["Report-It website update:\n"]
+        if crawl_result.added:
+            parts.append(f"{crawl_result.added} new reports have been published")
+        if crawl_result.removed:
+            parts.append(f"{crawl_result.removed} reports have been removed")
+        if crawl_result.marked_done:
+            parts.append(f"{crawl_result.marked_done} reports have been marked as done")
+        reportit_update = "\n".join(parts)
+        self.tweet_service.tweet_thread(reportit_update)
 
 
 class TweetService:
