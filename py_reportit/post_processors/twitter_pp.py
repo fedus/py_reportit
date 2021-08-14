@@ -30,8 +30,11 @@ class Twitter(AbstractPostProcessor):
             except:
                 logger.error("Unexpected error:", sys.exc_info()[0])
             finally:
-                logger.debug("Sleeping for %d seconds", delay)
-                sleep(delay)
+                if self.config.get("DEV"):
+                    logger.debug("Not sleeping since program is running in development mode")
+                else:
+                    logger.debug("Sleeping for %d seconds", delay)
+                    sleep(delay)
 
     def tweet_report(self, report: Report):
         logger.info("Tweeting %s", report)
