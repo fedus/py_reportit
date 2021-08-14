@@ -61,6 +61,9 @@ class TweetService:
         self.api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 
     def upload_media(self, filename):
+        if self.config.get("DEV"):
+            logger.debug("Not uploading media since program is running in development mode")
+            return None
         logger.debug(f"Uploading media with filename {filename}")
         return self.api.media_upload(filename=filename)
 
