@@ -11,7 +11,7 @@ from py_reportit.config import config
 from py_reportit.config.db import engine
 from py_reportit.repository.report import ReportRepository
 from py_reportit.post_processors import post_processors
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 logging.basicConfig(encoding='utf-8')
 logger = logging.getLogger(f"py_reportit")
@@ -19,27 +19,27 @@ logger.setLevel(config.get("LOG_LEVEL"))
 
 logger.info(f"py_reportit started at {datetime.now()}")
 
+Session = sessionmaker(engine)
+
 def run():
     logger.info("Starting crawl")
-    session = Session(engine)
+    with Session() as session:
+        crawler = CrawlerService(
+            config,
+            post_processors,
+            ReportRepository(session),
+            MetaRepository(session),
+            CrawlResultRepository(session),
+            ReportItService(config)
+        )
 
-    crawler = CrawlerService(
-        config,
-        post_processors,
-        ReportRepository(session),
-        MetaRepository(session),
-        CrawlResultRepository(session),
-        ReportItService(config)
-    )
+        try:
+            crawler.crawl()
+        except KeyboardInterrupt:
+            raise
+        except:
+            logger.error("Error during crawl: ", sys.exc_info()[0])
 
-    try:
-        crawler.crawl()
-    except KeyboardInterrupt:
-        raise
-    except:
-        logger.error("Error during crawl: ", sys.exc_info()[0])
-
-    session.close()
     logger.info("Crawl finished")
 
 if config.get("ONE_OFF"):
