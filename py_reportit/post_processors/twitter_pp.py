@@ -36,14 +36,15 @@ class Twitter(AbstractPostProcessor):
                 else:
                     logger.debug("Sleeping for %d seconds", delay)
                     sleep(delay)
-        last_crawl_result: CrawlResult = self.crawl_result_repository.get_most_recent()
-        if last_crawl_result and last_crawl_result.successful and (last_crawl_result.added or last_crawl_result.removed or last_crawl_result.marked_done):
-            try:
-                self.tweet_crawl_result(last_crawl_result)
-            except KeyboardInterrupt:
-                raise
-            except:
-                logger.error("Unexpected error:", sys.exc_info()[0])
+        if bool(int(self.config.get("TWITTER_POST_CRAWL_RESULTS"))):
+            last_crawl_result: CrawlResult = self.crawl_result_repository.get_most_recent()
+            if last_crawl_result and last_crawl_result.successful and (last_crawl_result.added or last_crawl_result.removed or last_crawl_result.marked_done):
+                try:
+                    self.tweet_crawl_result(last_crawl_result)
+                except KeyboardInterrupt:
+                    raise
+                except:
+                    logger.error("Unexpected error:", sys.exc_info()[0])
 
 
     def tweet_report(self, report: Report) -> None:

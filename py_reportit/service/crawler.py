@@ -52,11 +52,13 @@ class CrawlerService:
 
         pre_crawl_finished_reports_count = self.get_finished_reports_count()
 
+        logger.info("Fetching most recent successful crawl")
         last_successful_crawl = self.crawl_result_repository.get_most_recent_successful_crawl()
 
         pre_crawl_ids = []
 
         if last_successful_crawl:
+            logger.info("Found most recent successful crawl, fetching report IDs of last crawl")
             pre_crawl_ids = self.get_report_ids_since_crawl(last_successful_crawl)
 
         try:
