@@ -6,6 +6,8 @@ is_dev = "--dev" in sys.argv
 dotenv_variant = "dev" if is_dev else "prod"
 
 config = {
+    **dotenv_values(".secrets.base.env"),
+    **dotenv_values(".shared.base.env"),
     **dotenv_values(f".secrets.{dotenv_variant}.env"),
     **dotenv_values(f".shared.{dotenv_variant}.env"),
     **os.environ,
