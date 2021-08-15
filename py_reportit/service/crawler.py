@@ -39,12 +39,25 @@ class CrawlerService:
     def get_finished_reports_count(self) -> int:
         return self.report_repository.count_by(Report.status=="finished")
 
+    def get_report_ids_since_crawl(self, crawl: CrawlResult) -> list[int]:
+        return self.report_repository.get_ids_by(Report.id >= crawl.lowest_id)
+
+    def get_new_and_deleted_report_count(self, pre_crawl_ids: list[int], crawled_ids: list[int]) -> tuple[int]:
+        added_count = len(list(set(crawled_ids) - set(pre_crawl_ids)))
+        removed_count = len(list(set(pre_crawl_ids) - set(crawled_ids)))
+        return (added_count, removed_count)
+
     def crawl(self):
         logger.info("Fetching last crawl result")
 
-        pre_crawl_online_reports_count = self.get_online_reports_count()
-        pre_crawl_offline_reports_count = self.get_offline_reports_count()
         pre_crawl_finished_reports_count = self.get_finished_reports_count()
+
+        last_successful_crawl = self.crawl_result_repository.get_most_recent_successful_crawl()
+
+        pre_crawl_ids = []
+
+        if last_successful_crawl:
+            pre_crawl_ids = self.get_report_ids_since_crawl(last_successful_crawl)
 
         try:
             logger.info("Fetching reports")
@@ -63,12 +76,9 @@ class CrawlerService:
             ))
             return
 
-        post_crawl_online_reports_count = self.get_online_reports_count()
-        post_crawl_offline_reports_count = self.get_offline_reports_count()
         post_crawl_finished_reports_count = self.get_finished_reports_count()
 
-        added_reports_count = post_crawl_online_reports_count - pre_crawl_online_reports_count
-        removed_reports_count = post_crawl_offline_reports_count - pre_crawl_offline_reports_count
+        added_reports_count, removed_reports_count = self.get_new_and_deleted_report_count(pre_crawl_ids, extract_ids(reports))
         marked_done_count = post_crawl_finished_reports_count - pre_crawl_finished_reports_count
 
         lowest_id, highest_id = get_lowest_and_highest_ids(reports)

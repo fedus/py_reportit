@@ -59,3 +59,6 @@ class AbstractRepository(ABC):
 
     def count_by(self, *where_clauses) -> int:
         return self.session.execute(select(func.count()).select_from(select(self.repository_type).filter(*where_clauses).subquery())).scalars().one()
+
+    def get_ids_by(self, *where_clauses) -> list[int]:
+        return self.session.execute(select(self.repository_type.id).where(*where_clauses)).scalars().all()

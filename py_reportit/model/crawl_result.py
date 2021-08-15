@@ -16,4 +16,13 @@ class CrawlResult(Base):
     lowest_id = Column(Integer)
 
     def __repr__(self):
-        return f'<CrawlResult id={self.id!r} timestamp={self.timestamp!r}>'
+        repr = f'<CrawlResult id={self.id!r}\
+            timestamp={self.timestamp!r}\
+            successful={self.successful!r}\
+            total={self.total!r}\
+            added={self.added!r}\
+            removed={self.removed!r}\
+            marked_done={self.marked_done!r}\
+            highest_id={self.highest_id!r}\
+            lowest_id={self.lowest_id!r}>'
+        return ' '.join(repr.split())

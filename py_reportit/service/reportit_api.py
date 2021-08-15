@@ -10,4 +10,5 @@ class ReportItService:
 
     def get_reports(self) -> list[Report]:
         r = requests.get(self.config.get('REPORTIT_API_URL'))
-        return list(map(lambda rawReport: Report(**rawReport, meta=Meta(is_online=True)), r.json().get('reports')))
+        unsorted_reports = list(map(lambda rawReport: Report(**rawReport, meta=Meta(is_online=True)), r.json().get('reports')))
+        return sorted(unsorted_reports, key=lambda report: report.id)
