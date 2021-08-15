@@ -1,5 +1,6 @@
-import logging
+import sys, logging, sched
 
+from time import time, sleep
 from datetime import datetime
 from py_reportit.repository.crawl_result import CrawlResultRepository
 from py_reportit.repository.meta import MetaRepository
@@ -18,18 +19,39 @@ logger.setLevel(config.get("LOG_LEVEL"))
 
 logger.info(f"py_reportit started at {datetime.now()}")
 
-session = Session(engine)
+def run():
+    logger.info("Starting crawl")
+    session = Session(engine)
 
-crawler = CrawlerService(
-    config,
-    post_processors,
-    ReportRepository(session),
-    MetaRepository(session),
-    CrawlResultRepository(session),
-    ReportItService(config)
-)
+    crawler = CrawlerService(
+        config,
+        post_processors,
+        ReportRepository(session),
+        MetaRepository(session),
+        CrawlResultRepository(session),
+        ReportItService(config)
+    )
 
-crawler.crawl()
+    try:
+        crawler.crawl()
+    except KeyboardInterrupt:
+        raise
+    except:
+        logger.error("Error during crawl: ", sys.exc_info()[0])
 
-session.close()
+    session.close()
+    logger.info("Crawl finished")
+
+if config.get("ONE_OFF"):
+    logger.info("Running one-off crawl")
+    run()
+else:
+    crawl_interval_seconds = float(config.get("CRAWL_INTERVAL_MINUTES")) * 60
+    logger.info("Running crawl every %f seconds", crawl_interval_seconds)
+    s = sched.scheduler(time, sleep)
+    run()
+    while True:
+        s.enter(crawl_interval_seconds, 1, run)
+        s.run()
+
 logger.info("Exiting")
