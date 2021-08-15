@@ -12,4 +12,4 @@ COPY . .
 
 RUN mkdir -p /app/photos
 
-CMD [ "./run_py_reportit.sh"]
+ENTRYPOINT [ "./run_py_reportit.sh"]

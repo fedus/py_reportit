@@ -20,22 +20,23 @@ class Twitter(AbstractPostProcessor):
         self.tweet_service = TweetService(self.config)
 
     def process(self):
-        delay = int(self.config.get("TWITTER_DELAY_SECONDS"))
-        unprocessed_reports = self.report_repository.get_by(Report.meta.has(Meta.tweeted==False))
-        logger.info("Processing %d reports", len(unprocessed_reports))
-        for report in unprocessed_reports:
-            try:
-                self.tweet_report(report)
-            except KeyboardInterrupt:
-                raise
-            except:
-                logger.error("Unexpected error:", sys.exc_info()[0])
-            finally:
-                if self.config.get("DEV"):
-                    logger.debug("Not sleeping since program is running in development mode")
-                else:
-                    logger.debug("Sleeping for %d seconds", delay)
-                    sleep(delay)
+        if bool(int(self.config.get("TWITTER_POST_REPORTS"))):
+            delay = int(self.config.get("TWITTER_DELAY_SECONDS"))
+            unprocessed_reports = self.report_repository.get_by(Report.meta.has(Meta.tweeted==False))
+            logger.info("Processing %d reports", len(unprocessed_reports))
+            for report in unprocessed_reports:
+                try:
+                    self.tweet_report(report)
+                except KeyboardInterrupt:
+                    raise
+                except:
+                    logger.error("Unexpected error:", sys.exc_info()[0])
+                finally:
+                    if self.config.get("DEV"):
+                        logger.debug("Not sleeping since program is running in development mode")
+                    else:
+                        logger.debug("Sleeping for %d seconds", delay)
+                        sleep(delay)
         if bool(int(self.config.get("TWITTER_POST_CRAWL_RESULTS"))):
             last_crawl_result: CrawlResult = self.crawl_result_repository.get_most_recent()
             if last_crawl_result and last_crawl_result.successful and (last_crawl_result.added or last_crawl_result.removed or last_crawl_result.marked_done):

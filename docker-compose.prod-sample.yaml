@@ -1,0 +1,36 @@
+version: '3.1'
+
+services:
+  db:
+    image: mariadb:10.3
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: py_reportit_bot
+      MYSQL_DATABASE: py_reportit_bot
+      MYSQL_USER: py_reportit_bot
+      MYSQL_PASSWORD: py_reportit_bot
+    volumes:
+      - py_reportit_db:/var/lib/mysql
+
+  py_reportit:
+    image: py_reportit:latest
+    restart: always
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=py_reportit_bot
+      - DB_PASSWORD=py_reportit_bot
+      - DB_DATABASE=py_reportit_bot
+      - TWITTER_API_KEY=xx
+      - TWITTER_API_SECRET=xx
+      - TWITTER_ACCESS_TOKEN=xx
+      - TWITTER_ACCESS_SECRET=xx
+    entrypoint: ["./wait-for-it.sh", "db:3306", "--", "./run_py_reportit.sh"]
+    volumes:
+      - py_reportit_photos:/app/photos
+
+volumes:
+  py_reportit_photos:
+  py_reportit_db:
