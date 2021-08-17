@@ -53,7 +53,10 @@ class Twitter(AbstractPostProcessor):
         media_filename = f"{self.config.get('PHOTO_DOWNLOAD_FOLDER')}/{report.id}.jpg" if report.photo_url != None else None
         title = f"{report.title}\n" if report.has_title else ""
         text = f"{report.created_at.strftime('%Y-%m-%d')}\n{title}\n{report.description}"
-        self.tweet_service.tweet_thread(text, report.latitude, report.longitude, media_filename=media_filename)
+        add_link = bool(int(self.config.get("TWITTER_ADD_REPORT_LINK")))
+        link = self.config.get("REPORT_LINK_BASE")
+        extra_parts = [f"Follow this report's progress at {link}{report.id}"] if add_link else []
+        self.tweet_service.tweet_thread(text, report.latitude, report.longitude, media_filename=media_filename, extra_parts=extra_parts)
         report.meta.tweeted = True
         self.report_repository.session.commit()
 
@@ -93,7 +96,7 @@ class TweetService:
         logger.debug(f"Uploading media with filename {filename}")
         return self.api.media_upload(filename=filename)
 
-    def tweet_thread(self, text, lat=None, lon=None, media_filename=None):
+    def tweet_thread(self, text, lat=None, lon=None, media_filename=None, extra_parts=[]):
         logger.debug("Sending tweet (as thread if necessary)")
         media = None
         if media_filename:
@@ -104,6 +107,7 @@ class TweetService:
             logger.debug("Text longer than 280 chars, wrapping it")
             raw_wrapped = wrap(text, 270, replace_whitespace=False)
             parts = list(map(lambda part_tuple: f"{part_tuple[1]} {part_tuple[0]+1}/{len(raw_wrapped)}", enumerate(raw_wrapped)))
+        parts.extend(extra_parts)
         last_status = None
         for index, part in enumerate(parts):
             logger.debug(f"Tweeting part {index+1}/{len(parts)}")
