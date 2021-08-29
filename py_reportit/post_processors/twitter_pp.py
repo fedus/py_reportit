@@ -19,7 +19,7 @@ class Twitter(AbstractPostProcessor):
         super().__init__(*args, **kwargs)
         self.tweet_service = TweetService(self.config)
 
-    def process(self):
+    def process(self, new_or_updated_reports: list[Report]):
         if bool(int(self.config.get("TWITTER_POST_REPORTS"))):
             delay = int(self.config.get("TWITTER_DELAY_SECONDS"))
             unprocessed_reports = self.report_repository.get_by(Report.meta.has(Meta.tweeted==False))

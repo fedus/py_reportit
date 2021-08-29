@@ -2,6 +2,7 @@ import sys, logging, sched
 
 from time import time, sleep
 from datetime import datetime
+from py_reportit.model import *
 from py_reportit.repository.crawl_result import CrawlResultRepository
 from py_reportit.repository.meta import MetaRepository
 from py_reportit.service.crawler import CrawlerService
@@ -10,6 +11,7 @@ from py_reportit.service.reportit_api import ReportItService
 from py_reportit.config import config
 from py_reportit.config.db import engine
 from py_reportit.repository.report import ReportRepository
+from py_reportit.repository.report_answer import ReportAnswerRepository
 from py_reportit.post_processors import post_processors
 from sqlalchemy.orm import sessionmaker
 
@@ -29,6 +31,7 @@ def run():
             post_processors,
             ReportRepository(session),
             MetaRepository(session),
+            ReportAnswerRepository(session),
             CrawlResultRepository(session),
             ReportItService(config)
         )

@@ -2,7 +2,7 @@ import os, sys
 
 from dotenv import dotenv_values
 
-is_dev = "--dev" in sys.argv
+is_dev = "--dev" in sys.argv or os.environ.get("ENV", "PROD") == "DEV"
 is_one_off = "--one-off" in sys.argv
 dotenv_variant = "dev" if is_dev else "prod"
 

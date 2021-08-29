@@ -14,7 +14,7 @@ from py_reportit.model.meta import Meta
 logger = logging.getLogger(f"py_reportit.{__name__}")
 class PhotoDownload(AbstractPostProcessor):
 
-    def process(self):
+    def process(self, new_or_updated_reports: list[Report]):
         unprocessed_reports = self.report_repository.get_by(Report.photo_url != None, Report.meta.has(Meta.photo_downloaded==False))
         logger.info("Processing %d reports", len(unprocessed_reports))
         for report in unprocessed_reports:

@@ -8,6 +8,7 @@ from py_reportit.model.meta import Meta
 from py_reportit.repository.report import ReportRepository
 from py_reportit.repository.meta import MetaRepository
 from py_reportit.repository.crawl_result import CrawlResultRepository
+from py_reportit.repository.report_answer import ReportAnswerRepository
 from py_reportit.service.reportit_api import ReportItService
 from py_reportit.util.reportit_utils import extract_ids, get_lowest_and_highest_ids
 
@@ -21,12 +22,14 @@ class CrawlerService:
                  post_processors,
                  report_repository: ReportRepository,
                  meta_repository: MetaRepository,
+                 report_answer_repository: ReportAnswerRepository,
                  crawl_result_repository: CrawlResultRepository,
                  api_service: ReportItService):
         self.config = config
         self.post_processors = post_processors
         self.report_repository = report_repository
         self.meta_repository = meta_repository
+        self.report_answer_repository = report_answer_repository
         self.crawl_result_repository = crawl_result_repository
         self.api_service = api_service
 
@@ -42,6 +45,15 @@ class CrawlerService:
     def get_report_ids_since_crawl(self, crawl: CrawlResult) -> list[int]:
         return self.report_repository.get_ids_by(Report.id >= crawl.lowest_id)
 
+    def get_reports_since_crawl(self, crawl: CrawlResult) -> list[Report]:
+        return self.report_repository.get_by(Report.id >= crawl.lowest_id)
+
+    @staticmethod
+    def filter_updated_reports(existing_reports: list[Report], new_reports: list[Report]) -> list[Report]:
+        get_existing_report = lambda new_report: next(filter(lambda existing_report: existing_report.id == new_report.id, existing_reports), None)
+        report_is_new_or_updated = lambda new_report: get_existing_report(new_report).updated_at < new_report.updated_at if get_existing_report(new_report) else True
+        return list(filter(lambda report: report_is_new_or_updated(report), new_reports))
+
     def get_new_and_deleted_report_count(self, pre_crawl_ids: list[int], crawled_ids: list[int]) -> tuple[int]:
         added_count = len(list(set(crawled_ids) - set(pre_crawl_ids)))
         removed_count = len(list(set(pre_crawl_ids) - set(crawled_ids)))
@@ -55,17 +67,21 @@ class CrawlerService:
         logger.info("Fetching most recent successful crawl")
         last_successful_crawl = self.crawl_result_repository.get_most_recent_successful_crawl()
 
+        pre_crawl_reports = []
         pre_crawl_ids = []
+        new_or_updated_reports = []
 
         if last_successful_crawl:
-            logger.info("Found most recent successful crawl, fetching report IDs of last crawl")
-            pre_crawl_ids = self.get_report_ids_since_crawl(last_successful_crawl)
+            logger.info("Found most recent successful crawl, fetching reports of last crawl")
+            pre_crawl_reports = self.get_reports_since_crawl(last_successful_crawl)
+            pre_crawl_ids = extract_ids(pre_crawl_reports)
 
         try:
             logger.info("Fetching reports")
             reports = self.api_service.get_reports()
 
             logger.info(f"{len(reports)} reports fetched")
+            new_or_updated_reports = self.filter_updated_reports(pre_crawl_reports, reports)
             self.report_repository.update_or_create_all(reports)
             self.meta_repository.update_many({"is_online": False}, Meta.report_id.notin_(extract_ids(reports)), Meta.is_online == True)
         except KeyboardInterrupt:
@@ -77,6 +93,8 @@ class CrawlerService:
                 successful=False,
             ))
             return
+
+        logger.info("%d new or modified reports found", len(new_or_updated_reports))
 
         post_crawl_finished_reports_count = self.get_finished_reports_count()
 
@@ -102,4 +120,9 @@ class CrawlerService:
         logger.info("Running post processors")
         for pp in self.post_processors:
             logger.info(f"Running post processor {pp}")
-            pp(self.config, self.report_repository, self.meta_repository, self.crawl_result_repository).process()
+            pp(self.config,
+               self.api_service,
+               self.report_repository,
+               self.meta_repository,
+               self.report_answer_repository,
+               self.crawl_result_repository).process(new_or_updated_reports)
