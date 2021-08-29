@@ -9,6 +9,7 @@ from py_reportit.post_processors.abstract_pp import AbstractPostProcessor
 from py_reportit.model.report import Report
 from py_reportit.model.crawl_result import CrawlResult
 from py_reportit.model.meta import Meta
+from py_reportit.model.meta_tweet import MetaTweet
 
 
 logger = logging.getLogger(f"py_reportit.{__name__}")
@@ -56,8 +57,16 @@ class Twitter(AbstractPostProcessor):
         add_link = bool(int(self.config.get("TWITTER_ADD_REPORT_LINK")))
         link = self.config.get("REPORT_LINK_BASE")
         extra_parts = [f"Follow this report's progress at {link}{report.id}"] if add_link else []
-        self.tweet_service.tweet_thread(text, report.latitude, report.longitude, media_filename=media_filename, extra_parts=extra_parts)
+
+        tweet_ids = self.tweet_service.tweet_thread(text, report.latitude, report.longitude, media_filename=media_filename, extra_parts=extra_parts)
+        message_tweet_ids = tweet_ids[:-1]
+        follow_progress_tweet_id = tweet_ids[-1:][0]
+
+        tweet_metas = [MetaTweet(type="description", order=order, tweet_id=message_id) for order, message_id in enumerate(message_tweet_ids)]
+        tweet_metas.append(MetaTweet(type="follow", order=0, tweet_id=follow_progress_tweet_id))
+
         report.meta.tweeted = True
+        report.meta.tweet_ids = tweet_metas
         self.report_repository.session.commit()
 
     def tweet_crawl_result(self, crawl_result: CrawlResult) -> None:
@@ -109,6 +118,7 @@ class TweetService:
             parts = list(map(lambda part_tuple: f"{part_tuple[1]} {part_tuple[0]+1}/{len(raw_wrapped)}", enumerate(raw_wrapped)))
         parts.extend(extra_parts)
         last_status = None
+        tweet_ids = []
         for index, part in enumerate(parts):
             logger.debug(f"Tweeting part {index+1}/{len(parts)}")
             tweet_params = { 'status': part }
@@ -124,6 +134,8 @@ class TweetService:
             logger.debug(f'Tweeting with params: {tweet_params}')
             if self.config.get("DEV"):
                 logger.debug("Not sending tweet since program is running in development mode")
+                return ["TWEET_ID1", "TWEET_ID2", "TWEET_ID3"]
             else:
                 last_status = self.api.update_status(**tweet_params)
-
+                tweet_ids.append(last_status.id)
+        return tweet_ids
