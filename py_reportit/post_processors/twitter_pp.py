@@ -10,6 +10,10 @@ from py_reportit.model.report import Report
 from py_reportit.model.crawl_result import CrawlResult
 from py_reportit.model.meta import Meta
 from py_reportit.model.meta_tweet import MetaTweet
+from py_reportit.model.report_answer import ReportAnswer
+from py_reportit.model.answer_meta import ReportAnswerMeta
+from py_reportit.model.answer_meta_tweet import AnswerMetaTweet
+from py_reportit.util.reportit_utils import get_last_tweet_id
 
 
 logger = logging.getLogger(f"py_reportit.{__name__}")
@@ -21,6 +25,10 @@ class Twitter(AbstractPostProcessor):
         self.tweet_service = TweetService(self.config)
 
     def process(self, new_or_updated_reports: list[Report]):
+        self.process_reports()
+        self.process_answers()
+
+    def process_reports(self):
         if bool(int(self.config.get("TWITTER_POST_REPORTS"))):
             delay = int(self.config.get("TWITTER_DELAY_SECONDS"))
             unprocessed_reports = self.report_repository.get_by(Report.meta.has(Meta.tweeted==False))
@@ -48,6 +56,33 @@ class Twitter(AbstractPostProcessor):
                 except:
                     logger.error("Unexpected error:", sys.exc_info()[0])
 
+    def process_answers(self):
+        if bool(int(self.config.get("TWITTER_POST_ANSWERS"))):
+            delay = int(self.config.get("TWITTER_DELAY_SECONDS"))
+            unprocessed_reports = self.report_repository.get_by(
+                Report.meta.has(Meta.tweet_ids != None),
+                Report.answers.any(ReportAnswer.meta.has(ReportAnswerMeta.tweeted == False))
+            )
+            logger.info("Processing %d reports with pending answers", len(unprocessed_reports))
+            for report in unprocessed_reports:
+                answers = sorted(
+                    list(filter(lambda answer: not answer.meta.tweeted, report.answers)),
+                    key=lambda answer: answer.order
+                )
+                logger.info("Processing %d answers", len(answers))
+                for answer in answers:
+                    try:
+                        self.tweet_answer(report, answer)
+                    except KeyboardInterrupt:
+                        raise
+                    except:
+                        logger.error("Unexpected error:", sys.exc_info()[0])
+                    finally:
+                        if self.config.get("DEV"):
+                            logger.debug("Not sleeping since program is running in development mode")
+                        else:
+                            logger.debug("Sleeping for %d seconds", delay)
+                            sleep(delay)
 
     def tweet_report(self, report: Report) -> None:
         logger.info("Tweeting %s", report)
@@ -81,6 +116,26 @@ class Twitter(AbstractPostProcessor):
         reportit_update = "\n".join(parts)
         self.tweet_service.tweet_thread(reportit_update)
 
+    def tweet_answer(self, report: Report, answer: ReportAnswer) -> None:
+        last_tweet_id = get_last_tweet_id(report)
+
+        if not last_tweet_id:
+            logger.warn("Not tweeting %s because no last tweet id could be found", answer)
+            return
+
+        logger.info("Tweeting %s, answering to tweet id %s", answer, last_tweet_id)
+        timestamp = answer.created_at.strftime('%Y-%m-%d')
+        has_message_text = "with message:\n\n" if answer.text and answer.text != "" else "with no message."
+        title_variant = "closed this report" if answer.closing else "updated this report"
+        title = f"{answer.author} {title_variant} {has_message_text}"
+        complete_text = f"{timestamp}\n{title}{answer.text}"
+
+        tweet_ids = self.tweet_service.tweet_thread(complete_text, answer_to=last_tweet_id)
+        tweet_metas = [AnswerMetaTweet(order=order, tweet_id=message_id) for order, message_id in enumerate(tweet_ids)]
+
+        answer.meta.tweeted = True
+        answer.meta.tweet_ids = tweet_metas
+        self.report_repository.session.commit()
 
 class TweetService:
 
@@ -126,7 +181,7 @@ class TweetService:
             if index == 0 and media:
                 tweet_params['media_ids'] = [media.media_id]
             if last_status:
-                tweet_params['in_reply_to_status_id'] = last_status.id
+                tweet_params['in_reply_to_status_id'] = last_status
                 tweet_params['auto_populate_reply_metadata'] = True
             if lat and lon:
                 tweet_params['lat'] = lat
@@ -137,6 +192,6 @@ class TweetService:
                 logger.debug("Not sending tweet since program is running in development mode")
                 return ["TWEET_ID1", "TWEET_ID2", "TWEET_ID3"]
             else:
-                last_status = self.api.update_status(**tweet_params)
-                tweet_ids.append(last_status.id)
+                last_status = self.api.update_status(**tweet_params).id
+                tweet_ids.append(last_status)
         return tweet_ids
