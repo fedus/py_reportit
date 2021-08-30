@@ -9,7 +9,8 @@ logger = logging.getLogger(f"py_reportit.{__name__}")
 class AnswerFetch(AbstractPostProcessor):
 
     def process(self, new_or_updated_reports: list[Report]):
-        unprocessed_reports = new_or_updated_reports
+        finished_reports_with_no_answers = self.report_repository.get_by(Report.status == 'finished', Report.answers == None)
+        unprocessed_reports = finished_reports_with_no_answers + new_or_updated_reports
         logger.info("Processing %d reports", len(unprocessed_reports))
         for report in unprocessed_reports:
             try:
