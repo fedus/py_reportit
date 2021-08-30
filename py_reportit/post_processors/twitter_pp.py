@@ -59,11 +59,12 @@ class Twitter(AbstractPostProcessor):
         extra_parts = [f"Follow this report's progress at {link}{report.id}"] if add_link else []
 
         tweet_ids = self.tweet_service.tweet_thread(text, report.latitude, report.longitude, media_filename=media_filename, extra_parts=extra_parts)
-        message_tweet_ids = tweet_ids[:-1]
-        follow_progress_tweet_id = tweet_ids[-1:][0]
+        message_tweet_ids = tweet_ids[:-1] if add_link else tweet_ids
+        follow_progress_tweet_id = tweet_ids[-1:][0] if add_link else None
 
         tweet_metas = [MetaTweet(type="description", order=order, tweet_id=message_id) for order, message_id in enumerate(message_tweet_ids)]
-        tweet_metas.append(MetaTweet(type="follow", order=0, tweet_id=follow_progress_tweet_id))
+        if add_link:
+            tweet_metas.append(MetaTweet(type="follow", order=0, tweet_id=follow_progress_tweet_id))
 
         report.meta.tweeted = True
         report.meta.tweet_ids = tweet_metas
@@ -105,7 +106,7 @@ class TweetService:
         logger.debug(f"Uploading media with filename {filename}")
         return self.api.media_upload(filename=filename)
 
-    def tweet_thread(self, text, lat=None, lon=None, media_filename=None, extra_parts=[]):
+    def tweet_thread(self, text, lat=None, lon=None, media_filename=None, extra_parts=[], answer_to=None):
         logger.debug("Sending tweet (as thread if necessary)")
         media = None
         if media_filename:
@@ -117,14 +118,14 @@ class TweetService:
             raw_wrapped = wrap(text, 270, replace_whitespace=False)
             parts = list(map(lambda part_tuple: f"{part_tuple[1]} {part_tuple[0]+1}/{len(raw_wrapped)}", enumerate(raw_wrapped)))
         parts.extend(extra_parts)
-        last_status = None
+        last_status = answer_to
         tweet_ids = []
         for index, part in enumerate(parts):
             logger.debug(f"Tweeting part {index+1}/{len(parts)}")
             tweet_params = { 'status': part }
             if index == 0 and media:
                 tweet_params['media_ids'] = [media.media_id]
-            if index > 0 and last_status:
+            if last_status:
                 tweet_params['in_reply_to_status_id'] = last_status.id
                 tweet_params['auto_populate_reply_metadata'] = True
             if lat and lon:
