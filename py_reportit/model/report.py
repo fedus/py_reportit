@@ -22,7 +22,20 @@ class Report(Base):
     meta = relationship("Meta", uselist=False)
 
     def __repr__(self):
-        return f'<Report-It id={self.id!r}>'
+        return f'<Report-It id={self.id!r}\n\
+            title={self.title}\n\
+            description={self.description}\n\
+            photo_url={self.photo_url}\n\
+            thumbnail_url={self.thumbnail_url}\n\
+            latitude={self.latitude}\n\
+            longitude={self.longitude}\n\
+            created_at={self.created_at}\n\
+            updated_at={self.updated_at}\n\
+            key_category={self.key_category}\n\
+            id_service={self.id_service}\n\
+            status={self.status}\n\
+            answers={self.answers}\n\
+            meta={self.meta}>'
 
     @property
     def has_title(self):

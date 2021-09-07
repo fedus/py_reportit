@@ -4,6 +4,7 @@ import tweepy
 
 from time import sleep
 from textwrap import wrap
+from sqlalchemy.sql.elements import and_
 
 from py_reportit.post_processors.abstract_pp import AbstractPostProcessor
 from py_reportit.model.report import Report
@@ -31,7 +32,10 @@ class Twitter(AbstractPostProcessor):
     def process_reports(self):
         if bool(int(self.config.get("TWITTER_POST_REPORTS"))):
             delay = int(self.config.get("TWITTER_DELAY_SECONDS"))
-            unprocessed_reports = self.report_repository.get_by(Report.meta.has(Meta.tweeted==False))
+            unprocessed_reports = self.report_repository.get_by(
+                Report.meta.has(Meta.do_tweet==True),
+                Report.meta.has(Meta.tweeted==False)
+            )
             logger.info("Processing %d reports", len(unprocessed_reports))
             for report in unprocessed_reports:
                 try:
@@ -60,13 +64,17 @@ class Twitter(AbstractPostProcessor):
         if bool(int(self.config.get("TWITTER_POST_ANSWERS"))):
             delay = int(self.config.get("TWITTER_DELAY_SECONDS"))
             unprocessed_reports = self.report_repository.get_by(
+                Report.meta.has(Meta.do_tweet==True),
                 Report.meta.has(Meta.tweet_ids != None),
-                Report.answers.any(ReportAnswer.meta.has(ReportAnswerMeta.tweeted == False))
+                Report.answers.any(
+                    and_(ReportAnswer.meta.has(ReportAnswerMeta.do_tweet==True),
+                    ReportAnswer.meta.has(ReportAnswerMeta.tweeted == False))
+                )
             )
             logger.info("Processing %d reports with pending answers", len(unprocessed_reports))
             for report in unprocessed_reports:
                 answers = sorted(
-                    list(filter(lambda answer: not answer.meta.tweeted, report.answers)),
+                    list(filter(lambda answer: answer.meta.do_tweet and not answer.meta.tweeted, report.answers)),
                     key=lambda answer: answer.order
                 )
                 logger.info("Processing %d answers", len(answers))

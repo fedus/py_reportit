@@ -26,5 +26,6 @@ class ReportAnswer(Base):
             created_at={self.created_at!r}\
             author={self.author!r}\
             text={self.text!r}\
-            closing={self.closing!r}>'
+            closing={self.closing!r}\
+            meta={self.meta!r}>'
         return ' '.join(repr.split())
