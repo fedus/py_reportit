@@ -15,6 +15,7 @@ class Meta(Base):
     tweeted = Column(Boolean, default=False, server_default=text('false'), nullable=False)
     photo_downloaded = Column(Boolean, default=False, server_default=text('false'), nullable=False)
     thumb_downloaded = Column(Boolean, default=False, server_default=text('false'), nullable=False)
+    closed_without_answer = Column(Boolean, default=False, server_default=text('false'), nullable=False)
     tweet_ids = relationship('MetaTweet', uselist=True)
 
     def __repr__(self):

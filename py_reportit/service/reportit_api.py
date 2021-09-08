@@ -87,6 +87,8 @@ class ReportItService:
             report.updated_at = answers[-1].created_at
         else:
             report.updated_at = report.created_at
+            if report.status == 'finished':
+                report.meta.closed_without_answer = True
 
         return report
 
