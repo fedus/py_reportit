@@ -37,6 +37,7 @@ with Session() as session:
             success.append(report.id)
             sleep(sleep_seconds)
         except Exception as e:
+            repository.session.rollback()
             fail.append(f"Failed parsing report {id}, {e}")
 
 

@@ -39,5 +39,7 @@ class PhotoDownload(AbstractPostProcessor):
     def resize_and_save_photo(self, photo_request: requests.models.Response, filename: str, quality: int) -> None:
         logger.debug(f"Resizing and saving photo with filename {filename} and quality {quality}")
         img = ImageOps.exif_transpose(Image.open(BytesIO(photo_request.content)))
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
         img.thumbnail(size=(1200,1200))
         img.save(filename, optimize=True, quality=quality)
