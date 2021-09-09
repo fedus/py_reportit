@@ -54,8 +54,8 @@ class ReportItService:
         # Get description
         description_selection = soup.select(".panel-body .row .panel-default .panel-body")
         raw_description = description_selection[0].text.strip() if len(description_selection) else ""
-        description_regex = re.search("(?<=Description\s:\n).*", raw_description, re.MULTILINE)
-        report_properties["description"] = description_regex.group().strip() if description_regex else None
+        description_regex = re.search("Description\s:\n(.*)", raw_description, re.DOTALL)
+        report_properties["description"] = description_regex.group(1).strip() if description_regex else None
 
         # Get status
         status_regex = re.search(".*label\slabel-success.*", r.text)

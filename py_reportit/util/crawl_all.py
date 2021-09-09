@@ -1,9 +1,11 @@
+import sys
+
 from time import sleep
 
 from sqlalchemy.orm import sessionmaker
 
 from py_reportit.config import config
-from py_reportit.service.reportit_api import ReportItService
+from py_reportit.service.reportit_api import ReportItService, ReportNotFoundException
 from py_reportit.repository.report import ReportRepository
 from py_reportit.config.db import engine
 
@@ -12,10 +14,13 @@ Session = sessionmaker(engine)
 service = ReportItService(config)
 
 success = []
-fail = []
+repository_errors = []
+non_existent_reports = []
 
 start_id = int(config.get("CRAWL_ALL_START", -1))
 end_id = int(config.get("CRAWL_ALL_END", -1))
+dry_run = bool(int(config.get("CRAWL_ALL_DRY_RUN", 0)))
+print_success = bool(int(config.get("CRAWL_ALL_PRINT_SUCCESS", 0)))
 
 sleep_seconds = int(config.get("CRAWL_SLEEP", 1))
 
@@ -33,16 +38,36 @@ with Session() as session:
             report.meta.do_tweet = False
             for answer in report.answers:
                 answer.meta.do_tweet = False
-            repository.create(report)
+            if not dry_run:
+                repository.create(report)
+            if print_success:
+                print(report)
             success.append(report.id)
+            sys.stdout.flush()
             sleep(sleep_seconds)
+        except ReportNotFoundException as e:
+            print(f"Report with id {id} does not exist")
+            sys.stdout.flush()
+            non_existent_reports.append(id)
         except Exception as e:
-            repository.session.rollback()
-            fail.append(f"Failed parsing report {id}, {e}")
+            if not dry_run:
+                repository.session.rollback()
+            print(f"Failed parsing or saving report {id}: {e}")
+            sys.stdout.flush()
+            repository_errors.append([id, e])
 
+print()
+print("=== SUMMARY ===")
+print(f"{len(non_existent_reports)} non existent reports:")
+print(", ".join(map(str, non_existent_reports)))
+print()
 
-print(f"{len(fail)} failures:")
-for err in fail:
+print(f"{len(repository_errors)} failures:")
+for err in repository_errors:
     print(err)
+print()
 
-print(f"{len(success)} successes.")
+print(f"{len(success)} successes:")
+print(", ".join(map(str, success)))
+
+print("=== FINISHED ===")
