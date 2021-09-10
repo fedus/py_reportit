@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from py_reportit.config import config
 from py_reportit.service.reportit_api import ReportItService, ReportNotFoundException
 from py_reportit.repository.report import ReportRepository
+from py_reportit.repository.report_answer import ReportAnswerRepository
 from py_reportit.config.db import engine
 
 Session = sessionmaker(engine)
@@ -29,7 +30,8 @@ if start_id < 0 or end_id < 0:
     quit()
 
 with Session() as session:
-    repository = ReportRepository(session)
+    report_repository = ReportRepository(session)
+    answer_repository = ReportAnswerRepository(session)
 
     for id in range(start_id, end_id+1):
         try:
@@ -39,7 +41,8 @@ with Session() as session:
             for answer in report.answers:
                 answer.meta.do_tweet = False
             if not dry_run:
-                repository.create(report)
+                report_repository.update_or_create(report)
+                answer_repository.update_or_create_all(report.answers)
             if print_success:
                 print(report)
             success.append(report.id)
@@ -51,7 +54,7 @@ with Session() as session:
             non_existent_reports.append(id)
         except Exception as e:
             if not dry_run:
-                repository.session.rollback()
+                report_repository.session.rollback()
             print(f"Failed parsing or saving report {id}: {e}")
             sys.stdout.flush()
             repository_errors.append([id, e])
