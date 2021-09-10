@@ -10,6 +10,7 @@ services:
       MYSQL_USER: py_reportit_bot
       MYSQL_PASSWORD: py_reportit_bot
     volumes:
+      - ./mysql.cnf:/etc/mysql/conf.d/py_reportit_bot.cnf
       - py_reportit_db:/var/lib/mysql
 
   py_reportit:
