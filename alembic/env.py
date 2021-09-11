@@ -5,8 +5,8 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from py_reportit.config.db import db_url
-from py_reportit.model import *
+from py_reportit.shared.config.db import db_url
+from py_reportit.shared.model import *
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
