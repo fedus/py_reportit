@@ -20,7 +20,7 @@ def get_db():
         db.close()
 
 
-@app.get("/reports/", response_model=List[Report])
+@app.get("/reports", response_model=List[Report])
 def get_reports(offset: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     boxed_limit = max(1, min(100, limit))
     boxed_offset = offset if offset >= 0 else 0
