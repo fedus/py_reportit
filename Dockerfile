@@ -12,4 +12,4 @@ COPY . .
 
 RUN mkdir -p /app/photos
 
-ENTRYPOINT [ "./run_py_reportit.sh"]
+ENTRYPOINT [ "./run_py_reportit_crawler.sh"]

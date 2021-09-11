@@ -13,7 +13,7 @@ services:
       - ./mysql.cnf:/etc/mysql/conf.d/py_reportit_bot.cnf
       - py_reportit_db:/var/lib/mysql
 
-  py_reportit:
+  py_reportit_crawler:
     image: py_reportit:latest
     restart: always
     depends_on:
@@ -28,7 +28,22 @@ services:
       - TWITTER_API_SECRET=xx
       - TWITTER_ACCESS_TOKEN=xx
       - TWITTER_ACCESS_SECRET=xx
-    entrypoint: ["./wait-for-it.sh", "db:3306", "--", "./run_py_reportit.sh"]
+    entrypoint: ["./wait-for-it.sh", "db:3306", "--", "./run_py_reportit_crawler.sh"]
+    volumes:
+      - py_reportit_photos:/app/photos
+
+  py_reportit_api:
+    image: py_reportit:latest
+    restart: always
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=py_reportit_bot
+      - DB_PASSWORD=py_reportit_bot
+      - DB_DATABASE=py_reportit_bot
+    entrypoint: ["uvicorn", "py_reportit.web.server:app", "--host", "0.0.0.0", "--port", "80"]
     volumes:
       - py_reportit_photos:/app/photos
 
