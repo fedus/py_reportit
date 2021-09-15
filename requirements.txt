@@ -25,6 +25,7 @@ oauthlib==3.1.1
 orjson==3.6.3
 Pillow==8.3.1
 promise==2.3
+pycld2==0.41
 pydantic==1.8.2
 PyMySQL==1.0.2
 PySocks==1.7.1
