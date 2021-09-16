@@ -18,7 +18,7 @@ class Report(Base):
     key_category = Column(String(100))
     id_service = Column(SmallInteger)
     status = Column(Unicode(50))
-    answers = relationship("ReportAnswer", uselist=True)
+    answers = relationship("ReportAnswer", uselist=True, backref="report")
     meta = relationship("Meta", uselist=False, backref="report")
 
     def __repr__(self):

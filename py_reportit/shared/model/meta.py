@@ -1,7 +1,11 @@
+import logging
+
 from sqlalchemy.orm import relationship
 from py_reportit.shared.model.orm_base import Base
 from py_reportit.shared.util.language import detect_most_likely_language
 from sqlalchemy import Column, Integer, Boolean, ForeignKey, text
+
+logger = logging.getLogger(f"py_reportit.{__name__}")
 
 class Meta(Base):
 
@@ -19,7 +23,11 @@ class Meta(Base):
 
     @property
     def language(self):
-        return detect_most_likely_language(f"{self.report.title} {self.report.description}")
+        try:
+            return detect_most_likely_language(f"{self.report.title} {self.report.description}")
+        except Exception as e:
+            logger.warn(f"Could not detect language for report id {self.report.id}, exception: {e}")
+            return "un"
 
     def __repr__(self):
         return f'<Meta id={self.id!r} do_tweet={self.do_tweet!r}>'
