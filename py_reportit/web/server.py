@@ -26,6 +26,10 @@ def get_reports(offset: int = 0, limit: int = 100, db: Session = Depends(get_db)
     boxed_offset = offset if offset >= 0 else 0
     return ReportRepository(db).get_all(offset=boxed_offset, limit=boxed_limit)
 
+@app.get("/reports/all", response_model=List[Report])
+def get_reports(db: Session = Depends(get_db)):
+    return ReportRepository(db).get_all()
+
 @app.get("/reports/{reportId}", response_model=Report)
 def get_report(reportId: int, db: Session = Depends(get_db)):
     report = ReportRepository(db).get_by_id(reportId)

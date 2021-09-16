@@ -16,7 +16,7 @@ class AbstractRepository(ABC):
         with_offset = lambda statement: statement.offset(offset) if (offset and offset >= 0) else statement
         with_limit = lambda statement: statement.limit(limit) if (limit and limit > 0) else statement
 
-        select_statement = with_limit(with_offset(select(self.repository_type)))
+        select_statement = with_limit(with_offset(select(self.repository_type).order_by(self.repository_type.id.desc())))
 
         return self.session.execute(select_statement).scalars().all()
 
