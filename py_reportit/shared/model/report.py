@@ -19,7 +19,7 @@ class Report(Base):
     id_service = Column(SmallInteger)
     status = Column(Unicode(50))
     answers = relationship("ReportAnswer", uselist=True)
-    meta = relationship("Meta", uselist=False)
+    meta = relationship("Meta", uselist=False, backref="report")
 
     def __repr__(self):
         return f'<Report-It id={self.id!r}\n\

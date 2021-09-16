@@ -16,7 +16,7 @@ class ReportAnswer(Base):
     author = Column(Unicode(100))
     text = Column(UnicodeText)
     closing = Column(Boolean, default=False)
-    meta = relationship("ReportAnswerMeta", uselist=False)
+    meta = relationship("ReportAnswerMeta", uselist=False, backref="answer")
 
     def __repr__(self):
         repr = f'<ReportAnswer\
