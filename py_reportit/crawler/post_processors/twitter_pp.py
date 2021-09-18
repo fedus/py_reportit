@@ -51,7 +51,7 @@ class Twitter(AbstractPostProcessor):
                         logger.debug("Sleeping for %d seconds", delay)
                         sleep(delay)
         if bool(int(self.config.get("TWITTER_POST_CRAWL_RESULTS"))):
-            last_crawl_result: CrawlResult = self.crawl_result_repository.get_most_recent()
+            last_crawl_result = self.crawl_result_repository.get_most_recent()
             if last_crawl_result and last_crawl_result.successful and (last_crawl_result.added or last_crawl_result.removed or last_crawl_result.marked_done):
                 try:
                     self.tweet_crawl_result(last_crawl_result)

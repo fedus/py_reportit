@@ -1,6 +1,6 @@
 from py_reportit.shared.repository.abstract_repository import AbstractRepository
 from py_reportit.shared.model.meta import Meta
 
-class MetaRepository(AbstractRepository):
+class MetaRepository(AbstractRepository[Meta]):
 
-    repository_type = Meta
+    model = Meta
