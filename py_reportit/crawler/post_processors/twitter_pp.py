@@ -96,10 +96,10 @@ class Twitter(AbstractPostProcessor):
         logger.info("Tweeting %s", report)
         media_filename = f"{self.config.get('PHOTO_DOWNLOAD_FOLDER')}/{report.id}.jpg" if report.photo_url != None else None
         title = f"{report.title}\n" if report.has_title else ""
-        text = f"{report.created_at.strftime('%Y-%m-%d')}\n{title}\n{report.description}"
+        text = f"📩 {report.created_at.strftime('%Y-%m-%d')}\n{title}\n{report.description}"
         add_link = bool(int(self.config.get("TWITTER_ADD_REPORT_LINK")))
         link = self.config.get("REPORT_LINK_BASE")
-        extra_parts = [f"Follow this report's progress at {link}{report.id}"] if add_link else []
+        extra_parts = [f"💬 Follow this report's progress at {link}{report.id}"] if add_link else []
 
         tweet_ids = self.tweet_service.tweet_thread(text, report.latitude, report.longitude, media_filename=media_filename, extra_parts=extra_parts)
         message_tweet_ids = tweet_ids[:-1] if add_link else tweet_ids
@@ -135,7 +135,8 @@ class Twitter(AbstractPostProcessor):
         timestamp = answer.created_at.strftime('%Y-%m-%d')
         has_message_text = "with message:\n\n" if answer.text and answer.text != "" else "with no message."
         title_variant = "closed this report" if answer.closing else "updated this report"
-        title = f"{answer.author} {title_variant} {has_message_text}"
+        emoji = "✅" if answer.closing else "📤"
+        title = f"{emoji} {answer.author} {title_variant} {has_message_text}"
         complete_text = f"{timestamp}\n{title}{answer.text}"
 
         tweet_ids = self.tweet_service.tweet_thread(complete_text, answer_to=last_tweet_id)
