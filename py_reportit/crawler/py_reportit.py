@@ -20,48 +20,69 @@ logger.setLevel(config.get("LOG_LEVEL"))
 
 logger.info(f"py_reportit started at {datetime.now()}")
 
-do_shutdown = False
-
 Session = SessionLocal
 
-def run():
-    logger.info(f"Starting crawl at {datetime.now()}")
-    with Session() as session:
-        crawler = CrawlerService(
-            config,
-            post_processors,
-            ReportRepository(session),
-            MetaRepository(session),
-            ReportAnswerRepository(session),
-            CrawlResultRepository(session),
-            ReportItService(config)
-        )
+class ShutdownException(Exception):
+    pass
 
-        try:
-            crawler.crawl()
-        except KeyboardInterrupt:
-            raise
-        except:
-            logger.error("Error during crawl: ", sys.exc_info()[0])
+class App:
 
-    logger.info("Crawl finished")
+    def __init__(self, config, post_processors):
+        self.config = config
+        self.post_processors = post_processors
+        self.scheduler = None
+        self.do_shutdown = False
 
-if config.get("ONE_OFF"):
-    logger.info("Running one-off crawl")
-    run()
+    def execute_crawler(self):
+        logger.info(f"Starting crawl at {datetime.now()}")
+        with Session() as session:
+            crawler = CrawlerService(
+                self.config,
+                self.post_processors,
+                ReportRepository(session),
+                MetaRepository(session),
+                ReportAnswerRepository(session),
+                CrawlResultRepository(session),
+                ReportItService(self.config)
+            )
+
+            try:
+                crawler.crawl()
+            except KeyboardInterrupt:
+                raise
+            except:
+                logger.error("Error during crawl: ", sys.exc_info()[0])
+
+        logger.info("Crawl finished")
+
+    def run(self):
+        if self.config.get("ONE_OFF"):
+            logger.info("Running one-off crawl")
+            self.execute_crawler()
+        else:
+            signal.signal(signal.SIGINT, self.initiate_shutdown)
+            signal.signal(signal.SIGTERM, self.initiate_shutdown)
+            crawl_interval_seconds = float(self.config.get("CRAWL_INTERVAL_MINUTES")) * 60
+            logger.info("Running crawl every %f seconds", crawl_interval_seconds)
+            self.scheduler = sched.scheduler(time, sleep)
+            self.execute_crawler()
+            while not self.do_shutdown:
+                self.scheduler.enter(crawl_interval_seconds, 1, self.execute_crawler)
+                deadline = self.scheduler.run(blocking=False)
+                try:
+                    logger.info(f"Sleeping for {deadline} seconds")
+                    sleep(deadline)
+                except ShutdownException:
+                    pass
+
+    def initiate_shutdown(self, signum, frame):
+        logger.info(f'Received: {signum}, initiating shutdown')
+        self.do_shutdown = True
+        raise ShutdownException
+
+if __name__ == "__main__":
+    App(config, post_processors).run()
 else:
-    def exit_gracefully(signum, frame):
-        global do_shutdown
-        print('Received:', signum)
-        do_shutdown = True
-    signal.signal(signal.SIGINT, exit_gracefully)
-    signal.signal(signal.SIGTERM, exit_gracefully)
-    crawl_interval_seconds = float(config.get("CRAWL_INTERVAL_MINUTES")) * 60
-    logger.info("Running crawl every %f seconds", crawl_interval_seconds)
-    s = sched.scheduler(time, sleep)
-    run()
-    while not do_shutdown:
-        s.enter(crawl_interval_seconds, 1, run)
-        s.run()
+    logger.warn("Main module was imported, but is meant to run as standalone")
 
 logger.info("Exiting")
