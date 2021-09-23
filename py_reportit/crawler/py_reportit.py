@@ -25,7 +25,7 @@ do_shutdown = False
 Session = SessionLocal
 
 def run():
-    logger.info("Starting crawl")
+    logger.info(f"Starting crawl at {datetime.now()}")
     with Session() as session:
         crawler = CrawlerService(
             config,
