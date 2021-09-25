@@ -80,8 +80,11 @@ class App:
         self.do_shutdown = True
         raise ShutdownException
 
-if __name__ == "__main__":
+def run_app():
     App(config, post_processors).run()
+
+if __name__ == "__main__":
+    run_app()
 else:
     logger.warn("Main module was imported, but is meant to run as standalone")
 
