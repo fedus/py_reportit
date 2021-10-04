@@ -1,9 +1,10 @@
 from typing import Generic, Type, TypeVar
 from abc import ABC
 
-from sqlalchemy import select, update
+from sqlalchemy import select, update, Column
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.functions import func
+from sqlakeyset import get_page
 
 from py_reportit.shared.model.orm_base import Base
 
@@ -24,6 +25,14 @@ class AbstractRepository(ABC, Generic[Model]):
         select_statement = with_limit(with_offset(select(self.model).order_by(self.model.id.desc())))
 
         return self.session.execute(select_statement).scalars().all()
+
+    def get_paged(self, page_size: int = 100, page=None, by: Column = None, asc: bool = True):
+        # Using SQLAlchemy 1.x style select due to limitation of sqlakeyset
+        by_column = by if by else self.model.id
+        order_by = by_column.asc() if asc else by_column.desc()
+        processed_order_by = [order_by, self.model.id.asc() if asc else self.model.id.desc()] if by_column != self.model.id else [by_column]
+        q = self.session.query(self.model).order_by(*processed_order_by)
+        return get_page(q, per_page=page_size, page=page)
 
     def get_by_id(self, id: int) -> Model:
         return self.session.execute(select(self.model).where(self.model.id==id)).scalar()

@@ -6,7 +6,7 @@ from os import path
 
 from py_reportit.shared.config import config
 from py_reportit.shared.config.db import SessionLocal
-from py_reportit.web.schema.report import Report
+from py_reportit.web.schema.report import PagedReportList, Report
 from py_reportit.shared.model import *
 from py_reportit.shared.repository.report import ReportRepository
 
@@ -20,11 +20,16 @@ def get_db():
         db.close()
 
 
-@app.get("/reports", response_model=List[Report])
-def get_reports(offset: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    boxed_limit = max(1, min(100, limit))
-    boxed_offset = offset if offset >= 0 else 0
-    return ReportRepository(db).get_all(offset=boxed_offset, limit=boxed_limit)
+@app.get("/reports", response_model=PagedReportList)
+def get_reports(page: str = None, page_size: int = 50, sort_by: str = 'id', asc: bool = False, db: Session = Depends(get_db)):
+    boxed_page_size = max(1, min(100, page_size))
+    paged_reports = ReportRepository(db).get_paged(page_size=boxed_page_size, page=page, by=report.Report.__dict__[sort_by], asc=asc)
+
+    return PagedReportList(
+        previous=paged_reports.paging.bookmark_previous if paged_reports.paging.has_previous else None,
+        next=paged_reports.paging.bookmark_next if paged_reports.paging.has_next else None,
+        reports=paged_reports
+    )
 
 @app.get("/reports/all", response_model=List[Report])
 def get_reports(db: Session = Depends(get_db)):

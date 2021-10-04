@@ -24,3 +24,8 @@ class Report(BaseModel):
 
     class Config:
         orm_mode = True
+
+class PagedReportList(BaseModel):
+    previous: Optional[str]
+    next: Optional[str]
+    reports: list[Report]
