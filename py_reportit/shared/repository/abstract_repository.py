@@ -30,7 +30,7 @@ class AbstractRepository(ABC, Generic[Model]):
         # Using SQLAlchemy 1.x style select due to limitation of sqlakeyset
         by_column = by if by else self.model.id
         order_by = by_column.asc() if asc else by_column.desc()
-        processed_order_by = [order_by, self.model.id.asc() if asc else self.model.id.desc()] if by_column != self.model.id else [by_column]
+        processed_order_by = [order_by, self.model.id.asc() if asc else self.model.id.desc()] if by_column != self.model.id else [order_by]
         q = self.session.query(self.model).order_by(*processed_order_by)
         return get_page(q, per_page=page_size, page=page)
 
