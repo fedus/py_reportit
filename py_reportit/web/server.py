@@ -1,8 +1,10 @@
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.params import Query
 from fastapi.responses import FileResponse
-from typing import List
+from typing import List, Optional
 from sqlalchemy.orm import Session
 from os import path
+from enum import Enum
 
 from py_reportit.shared.config import config
 from py_reportit.shared.config.db import SessionLocal
@@ -11,6 +13,10 @@ from py_reportit.shared.model import *
 from py_reportit.shared.repository.report import ReportRepository
 
 app = FastAPI()
+
+class SearchTextColumn(str, Enum):
+    title = "title"
+    description = "description"
 
 def get_db():
     db = SessionLocal()
@@ -21,14 +27,21 @@ def get_db():
 
 
 @app.get("/reports", response_model=PagedReportList)
-def get_reports(page: str = None, page_size: int = 50, sort_by: str = 'id', asc: bool = False, db: Session = Depends(get_db)):
+def get_reports(page: str = None, page_size: int = 50, sort_by: str = 'id', asc: bool = False, search_attrs: Optional[List[SearchTextColumn]] = Query(None), search_text: Optional[str] = None, db: Session = Depends(get_db)):
     boxed_page_size = max(1, min(100, page_size))
-    paged_reports = ReportRepository(db).get_paged(page_size=boxed_page_size, page=page, by=report.Report.__dict__[sort_by], asc=asc)
+    paged_reports = ReportRepository(db).get_paged(
+        page_size=boxed_page_size,
+        page=page,
+        by=report.Report.__dict__[sort_by],
+        asc=asc,
+        search_attrs=list(map(lambda search_attr: report.Report.__dict__[search_attr], search_attrs)) if search_attrs else [],
+        search_text=search_text if search_text else None
+    )
 
     return PagedReportList(
         previous=paged_reports.paging.bookmark_previous if paged_reports.paging.has_previous else None,
         next=paged_reports.paging.bookmark_next if paged_reports.paging.has_next else None,
-        reports=paged_reports
+        reports=paged_reports,
     )
 
 @app.get("/reports/all", response_model=List[Report])
