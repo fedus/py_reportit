@@ -27,14 +27,14 @@ def get_db():
 
 
 @app.get("/reports", response_model=PagedReportList)
-def get_reports(page: str = None, page_size: int = 50, sort_by: str = 'id', asc: bool = False, search_attrs: Optional[List[SearchTextColumn]] = Query(None), search_text: Optional[str] = None, db: Session = Depends(get_db)):
+def get_reports(page: str = None, page_size: int = 50, sort_by: str = 'id', asc: bool = False, search_text: Optional[str] = None, db: Session = Depends(get_db)):
     boxed_page_size = max(1, min(100, page_size))
     paged_reports = ReportRepository(db).get_paged(
         page_size=boxed_page_size,
         page=page,
         by=report.Report.__dict__[sort_by],
         asc=asc,
-        search_attrs=list(map(lambda search_attr: report.Report.__dict__[search_attr], search_attrs)) if search_attrs else [],
+        search_attrs=list(map(lambda search_attr: report.Report.__dict__[search_attr], ["title", "description"])),
         search_text=search_text if search_text else None
     )
 
