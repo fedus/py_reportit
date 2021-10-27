@@ -29,7 +29,7 @@ def get_db():
 @app.get("/reports", response_model=PagedReportList)
 def get_reports(page: str = None, page_size: int = 50, sort_by: str = 'id', asc: bool = False, search_text: Optional[str] = None, db: Session = Depends(get_db)):
     boxed_page_size = max(1, min(100, page_size))
-    paged_reports = ReportRepository(db).get_paged(
+    paged_reports_with_count = ReportRepository(db).get_paged(
         page_size=boxed_page_size,
         page=page,
         by=report.Report.__dict__[sort_by],
@@ -38,9 +38,12 @@ def get_reports(page: str = None, page_size: int = 50, sort_by: str = 'id', asc:
         search_text=search_text if search_text else None
     )
 
+    paged_reports = paged_reports_with_count["page"];
+
     return PagedReportList(
         previous=paged_reports.paging.bookmark_previous if paged_reports.paging.has_previous else None,
         next=paged_reports.paging.bookmark_next if paged_reports.paging.has_next else None,
+        total_count=paged_reports_with_count["total_count"],
         reports=paged_reports,
     )
 

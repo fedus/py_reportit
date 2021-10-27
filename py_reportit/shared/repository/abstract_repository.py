@@ -8,6 +8,7 @@ from sqlalchemy.sql.functions import func
 from sqlakeyset import get_page
 
 from py_reportit.shared.model.orm_base import Base
+from py_reportit.shared.model.page_with_count import PageWithCount
 
 Model = TypeVar('Model', bound=Base)
 
@@ -27,14 +28,14 @@ class AbstractRepository(ABC, Generic[Model]):
 
         return self.session.execute(select_statement).scalars().all()
 
-    def get_paged(self, page_size: int = 100, page=None, by: Column = None, asc: bool = True, search_attrs: list[Column] = [], search_text: str = None):
+    def get_paged(self, page_size: int = 100, page=None, by: Column = None, asc: bool = True, search_attrs: list[Column] = [], search_text: str = None) -> PageWithCount:
         # Using SQLAlchemy 1.x style select due to limitation of sqlakeyset
         by_column = by if by else self.model.id
         order_by = by_column.asc() if asc else by_column.desc()
         processed_order_by = [order_by, self.model.id.asc() if asc else self.model.id.desc()] if by_column != self.model.id else [order_by]
         q_without_search_text = self.session.query(self.model).order_by(*processed_order_by)
         q = q_without_search_text.filter(or_(*list(map(lambda col: col.like(f'%{search_text}%'), search_attrs)))) if search_text and len(search_attrs) else q_without_search_text
-        return get_page(q, per_page=page_size, page=page)
+        return PageWithCount(page=get_page(q, per_page=page_size, page=page), total_count=q.count())
 
     def get_by_id(self, id: int) -> Model:
         return self.session.execute(select(self.model).where(self.model.id==id)).scalar()

@@ -28,4 +28,5 @@ class Report(BaseModel):
 class PagedReportList(BaseModel):
     previous: Optional[str]
     next: Optional[str]
+    total_count: int
     reports: list[Report]
