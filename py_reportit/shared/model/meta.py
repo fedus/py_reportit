@@ -3,7 +3,7 @@ import logging
 from sqlalchemy.orm import relationship
 from py_reportit.shared.model.orm_base import Base
 from py_reportit.shared.util.language import detect_most_likely_language
-from sqlalchemy import Column, Integer, Boolean, ForeignKey, text
+from sqlalchemy import Column, Integer, Boolean, ForeignKey, String, text
 
 logger = logging.getLogger(f"py_reportit.{__name__}")
 
@@ -20,6 +20,9 @@ class Meta(Base):
     thumb_downloaded = Column(Boolean, default=False, server_default=text('false'), nullable=False)
     closed_without_answer = Column(Boolean, default=False, server_default=text('false'), nullable=False)
     tweet_ids = relationship('MetaTweet', uselist=True)
+    address_polled = Column(Boolean, default=False, server_default=text('false'), nullable=False)
+    address_street = Column(String(100))
+    address_neighbourhood = Column(String(100))
 
     @property
     def language(self):
