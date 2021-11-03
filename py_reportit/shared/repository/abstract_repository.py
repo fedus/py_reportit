@@ -3,6 +3,7 @@ from abc import ABC
 
 from sqlalchemy import select, update, Column
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.query import Query
 from sqlalchemy.sql.expression import or_
 from sqlalchemy.sql.functions import func
 from sqlakeyset import get_page
@@ -28,13 +29,19 @@ class AbstractRepository(ABC, Generic[Model]):
 
         return self.session.execute(select_statement).scalars().all()
 
-    def get_paged(self, page_size: int = 100, page=None, by: Column = None, asc: bool = True, search_attrs: list[Column] = [], search_text: str = None) -> PageWithCount:
+    def build_filter_query(self, by: Column = None, asc: bool = True, search_attrs: list[Column] = [], search_text: str = None) -> Query:
         # Using SQLAlchemy 1.x style select due to limitation of sqlakeyset
         by_column = by if by else self.model.id
         order_by = by_column.asc() if asc else by_column.desc()
         processed_order_by = [order_by, self.model.id.asc() if asc else self.model.id.desc()] if by_column != self.model.id else [order_by]
         q_without_search_text = self.session.query(self.model).order_by(*processed_order_by)
-        q = q_without_search_text.filter(or_(*list(map(lambda col: col.like(f'%{search_text}%'), search_attrs)))) if search_text and len(search_attrs) else q_without_search_text
+
+        return q_without_search_text.filter(or_(*list(map(lambda col: col.like(f'%{search_text}%'), search_attrs)))) if search_text and len(search_attrs) else q_without_search_text
+
+
+    def get_paged(self, page_size: int = 100, page=None, **filter_Args) -> PageWithCount:
+        q = self.build_filter_query(**filter_Args)
+
         return PageWithCount(page=get_page(q, per_page=page_size, page=page), total_count=q.count())
 
     def get_by_id(self, id: int) -> Model:
