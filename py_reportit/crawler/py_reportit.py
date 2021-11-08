@@ -6,6 +6,7 @@ from py_reportit.shared.model import *
 from py_reportit.shared.repository.crawl_result import CrawlResultRepository
 from py_reportit.shared.repository.meta import MetaRepository
 from py_reportit.crawler.service.crawler import CrawlerService
+from py_reportit.crawler.service.geocoder import GeocoderService
 
 from py_reportit.crawler.service.reportit_api import ReportItService
 from py_reportit.shared.config import config
@@ -43,7 +44,8 @@ class App:
                 MetaRepository(session),
                 ReportAnswerRepository(session),
                 CrawlResultRepository(session),
-                ReportItService(self.config)
+                ReportItService(self.config),
+                GeocoderService(self.config)
             )
 
             try:

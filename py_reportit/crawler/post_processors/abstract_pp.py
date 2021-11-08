@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from py_reportit.crawler.service.geocoder import GeocoderService
 
 from py_reportit.crawler.service.reportit_api import ReportItService
 
@@ -13,12 +14,14 @@ class AbstractPostProcessor(ABC):
     def __init__(self,
                  config: dict,
                  api_service: ReportItService,
+                 geocoder_service: GeocoderService,
                  report_repository: ReportRepository,
                  meta_repository: MetaRepository,
                  report_answer_repository: ReportAnswerRepository,
                  crawl_result_repository: CrawlResultRepository):
         self.config = config
         self.api_service = api_service
+        self.geocoder_service = geocoder_service
         self.report_repository = report_repository
         self.meta_repository = meta_repository
         self.report_answer_repository = report_answer_repository

@@ -2,6 +2,7 @@ import logging, sys
 
 from datetime import datetime
 
+from py_reportit.crawler.service.geocoder import GeocoderService
 from py_reportit.shared.model.crawl_result import CrawlResult
 from py_reportit.shared.model.report import Report
 from py_reportit.shared.model.meta import Meta
@@ -24,7 +25,8 @@ class CrawlerService:
                  meta_repository: MetaRepository,
                  report_answer_repository: ReportAnswerRepository,
                  crawl_result_repository: CrawlResultRepository,
-                 api_service: ReportItService):
+                 api_service: ReportItService,
+                 geocoder_service: GeocoderService):
         self.config = config
         self.post_processors = post_processors
         self.report_repository = report_repository
@@ -32,6 +34,7 @@ class CrawlerService:
         self.report_answer_repository = report_answer_repository
         self.crawl_result_repository = crawl_result_repository
         self.api_service = api_service
+        self.geocoder_service = geocoder_service
 
     def get_online_reports_count(self) -> int:
         return self.meta_repository.count_by(Meta.is_online==True)
@@ -122,6 +125,7 @@ class CrawlerService:
             logger.info(f"Running post processor {pp}")
             pp(self.config,
                self.api_service,
+               self.geocoder_service,
                self.report_repository,
                self.meta_repository,
                self.report_answer_repository,

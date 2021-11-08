@@ -22,6 +22,7 @@ class Meta(Base):
     tweet_ids = relationship('MetaTweet', uselist=True)
     address_polled = Column(Boolean, default=False, server_default=text('false'), nullable=False)
     address_street = Column(String(100))
+    address_postcode = Column(Integer)
     address_neighbourhood = Column(String(100))
 
     @property
