@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-class Meta(BaseModel):
+class AnswerMeta(BaseModel):
     language: str
 
     class Config:

@@ -4,7 +4,7 @@ from datetime import datetime
 from pydantic import BaseModel
 
 from py_reportit.web.schema.answer import Answer
-from py_reportit.web.schema.meta import Meta
+from py_reportit.web.schema.report_meta import ReportMeta
 
 class Report(BaseModel):
     id: int
@@ -19,7 +19,7 @@ class Report(BaseModel):
     key_category: Optional[str]
     id_service: Optional[int]
     status: str
-    meta: Meta
+    meta: ReportMeta
     answers: List[Answer] = []
 
     class Config:
