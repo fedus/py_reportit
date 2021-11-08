@@ -13,6 +13,10 @@ logger = logging.getLogger(f"py_reportit.{__name__}")
 class Geocode(AbstractPostProcessor):
 
     def process(self, new_or_updated_reports: list[Report]):
+        if not int(self.config.get("GEOCODE_ACTIVE")):
+            logger.info("Geocoding not active, skipping")
+            return
+
         delay = float(self.config.get("GEOCODE_DELAY_SECONDS"))
 
         unprocessed_reports = self.report_repository.get_by(
