@@ -44,7 +44,7 @@ with Session() as session:
     )
 
     filter_critera = [Report.id >= start_id, Report.id <= end_id, Report.meta.has(Meta.address_polled==False)] if only_missing_addresses else [Report.id >= start_id, Report.id <= end_id]
-    reports = report_repository.get_by(Report.id >= start_id, Report.id <= end_id)
+    reports = report_repository.get_by(*filter_critera)
 
     for report in reports:
         id = report.id
