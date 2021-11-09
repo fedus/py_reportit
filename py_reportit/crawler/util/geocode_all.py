@@ -43,11 +43,14 @@ with Session() as session:
         None
     )
 
-    filter_critera = [Report.id >= start_id, Report.id <= end_id, Report.meta.has(Meta.address_polled==False)] if only_missing_addresses else [Report.id >= start_id, Report.id <= end_id]
-    reports = report_repository.get_by(*filter_critera)
+    filter_criteria = [Report.id >= start_id, Report.id <= end_id, Report.meta.has(Meta.address_polled==False)] if only_missing_addresses else [Report.id >= start_id, Report.id <= end_id]
+    reports = report_repository.get_by(*filter_criteria)
 
     for report in reports:
         id = report.id
+        if not report.latitude or not report.longitude:
+            print(f"Report {id} has no coordinates, skipping")
+            continue
         try:
             print(f"Geocoding report {id}")
             print(geocoder_service.get_neighbourhood_and_street(report.latitude, report.longitude))
