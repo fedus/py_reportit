@@ -5,6 +5,7 @@ from time import sleep
 from sqlalchemy.orm import sessionmaker
 
 from py_reportit.shared.model.report import Report
+from py_reportit.shared.model.meta import Meta
 from py_reportit.shared.config import config
 from py_reportit.crawler.service.geocoder import GeocoderService
 from py_reportit.shared.repository.report import ReportRepository
@@ -20,6 +21,7 @@ repository_errors = []
 
 start_id = int(config.get("START", -1))
 end_id = int(config.get("END", -1))
+only_missing_addresses = bool(int(config.get("ONLY_MISSING", 0)))
 print_success = bool(int(config.get("PRINT_SUCCESS", 0)))
 
 sleep_seconds = float(config.get("GEOCODE_DELAY_SECONDS", 0.5))
@@ -41,6 +43,7 @@ with Session() as session:
         None
     )
 
+    filter_critera = [Report.id >= start_id, Report.id <= end_id, Report.meta.has(Meta.address_polled==False)] if only_missing_addresses else [Report.id >= start_id, Report.id <= end_id]
     reports = report_repository.get_by(Report.id >= start_id, Report.id <= end_id)
 
     for report in reports:
