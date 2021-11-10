@@ -1,3 +1,4 @@
+from functools import reduce
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.params import Query
 from fastapi.responses import FileResponse
@@ -27,15 +28,42 @@ def get_db():
 
 
 @app.get("/reports", response_model=PagedReportList)
-def get_reports(page: str = None, page_size: int = 50, sort_by: str = 'id', asc: bool = False, search_text: Optional[str] = None, db: Session = Depends(get_db)):
+def get_reports(
+    page: str = None,
+    page_size: int = 50,
+    sort_by: str = 'id',
+    asc: bool = False,
+    street: Optional[str] = None,
+    neighbourhood: Optional[str] = None,
+    postcode: Optional[int] = None,
+    search_text: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
     boxed_page_size = max(1, min(100, page_size))
+
+    and_q = []
+    or_q = []
+
+    if street:
+        and_q.append(report.Report.meta.has(meta.Meta.address_street.like(f'%{street}%')))
+
+    if neighbourhood:
+        and_q.append(report.Report.meta.has(meta.Meta.address_neighbourhood.like(f'%{neighbourhood}%')))
+
+    if postcode:
+        and_q.append(report.Report.meta.has(meta.Meta.address_postcode == postcode))
+
+    if search_text:
+        search_attrs = list(map(lambda search_attr: report.Report.__dict__[search_attr], ["title", "description"]))
+        or_q = list(map(lambda col: col.like(f'%{search_text}%'), search_attrs))
+
     paged_reports_with_count = ReportRepository(db).get_paged(
         page_size=boxed_page_size,
         page=page,
         by=report.Report.__dict__[sort_by],
         asc=asc,
-        search_attrs=list(map(lambda search_attr: report.Report.__dict__[search_attr], ["title", "description"])),
-        search_text=search_text if search_text else None
+        and_cond=and_q if len(and_q) else None,
+        or_cond=or_q if len(or_q) else None
     )
 
     paged_reports = paged_reports_with_count["page"];

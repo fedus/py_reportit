@@ -29,14 +29,20 @@ class AbstractRepository(ABC, Generic[Model]):
 
         return self.session.execute(select_statement).scalars().all()
 
-    def build_filter_query(self, by: Column = None, asc: bool = True, search_attrs: list[Column] = [], search_text: str = None) -> Query:
+    def build_filter_query(self, by: Column = None, asc: bool = True, and_cond = None, or_cond = None) -> Query:
         # Using SQLAlchemy 1.x style select due to limitation of sqlakeyset
         by_column = by if by else self.model.id
         order_by = by_column.asc() if asc else by_column.desc()
         processed_order_by = [order_by, self.model.id.asc() if asc else self.model.id.desc()] if by_column != self.model.id else [order_by]
-        q_without_search_text = self.session.query(self.model).order_by(*processed_order_by)
+        query = self.session.query(self.model).order_by(*processed_order_by)
 
-        return q_without_search_text.filter(or_(*list(map(lambda col: col.like(f'%{search_text}%'), search_attrs)))) if search_text and len(search_attrs) else q_without_search_text
+        if and_cond and len(and_cond):
+            query = query.filter(*and_cond)
+
+        if or_cond and len(or_cond):
+            query = query.filter(or_(*or_cond))
+
+        return query
 
 
     def get_paged(self, page_size: int = 100, page=None, **filter_Args) -> PageWithCount:
