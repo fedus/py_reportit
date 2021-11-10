@@ -29,9 +29,16 @@ class GeocoderService:
 
         address_json = resp_json['address']
 
-        street = address_json['road'] if 'road' in address_json else None
-        postcode = int(address_json['postcode']) if 'postcode' in address_json else None
-        neighbourhood = address_json['suburb'] if 'suburb' in address_json else None
+        street = None
+        postcode = None
+        neighbourhood = None
+
+        if address_json['country_code'] == 'lu':
+            street = address_json['road'] if 'road' in address_json else None
+            postcode = address_json['postcode'] if 'postcode' in address_json else None
+            neighbourhood = address_json['suburb'] if 'suburb' in address_json else None
+        else:
+            logger.warn(f'Encountered geocode that is not Luxembourg: {address_json["country_code"]} for lat {latitude} and lon {longitude}, returning empty geolocation data')
 
         return GeocodeResult(
             street=street,

@@ -20,6 +20,8 @@ class Geocode(AbstractPostProcessor):
         delay = float(self.config.get("GEOCODE_DELAY_SECONDS"))
 
         unprocessed_reports = self.report_repository.get_by(
+            Report.latitude != None,
+            Report.longitude != None,
             Report.meta.has(Meta.address_polled==False)
         )
 
@@ -48,7 +50,7 @@ class Geocode(AbstractPostProcessor):
 
         report.meta.address_polled = True
         report.meta.address_street = geocode_results["street"]
-        report.meta.address_postcode = geocode_results["postcode"]
+        report.meta.address_postcode = int(geocode_results["postcode"]) if geocode_results["postcode"] else None
         report.meta.address_neighbourhood = geocode_results["neighbourhood"]
 
         self.report_repository.session.commit()
