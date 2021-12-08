@@ -177,8 +177,8 @@ class TweetService:
             media = self.upload_media(media_filename)
             logger.debug(f"Uploaded media: {media}")
         parts = [text]
-        if len(text) > 280:
-            logger.debug("Text longer than 280 chars, wrapping it")
+        if len(text) >= 280:
+            logger.debug("Text length >= 280 chars, wrapping it")
             raw_wrapped = wrap(text, 270, replace_whitespace=False)
             parts = list(map(lambda part_tuple: f"{part_tuple[1]} {part_tuple[0]+1}/{len(raw_wrapped)}", enumerate(raw_wrapped)))
         parts.extend(extra_parts)
