@@ -201,6 +201,10 @@ class TweetService:
                 logger.debug("Not sending tweet since program is running in development mode")
                 return ["TWEET_ID1", "TWEET_ID2", "TWEET_ID3"]
             else:
-                last_status = self.api.update_status(**tweet_params).id
+                try:
+                    last_status = self.api.update_status(**tweet_params).id
+                except:
+                    logger.error(f"Failed while tweeting, message length: {len(part)}, params: {tweet_params}")
+                    raise
                 tweet_ids.append(last_status)
         return tweet_ids
