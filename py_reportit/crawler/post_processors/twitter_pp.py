@@ -12,12 +12,18 @@ from py_reportit.shared.model.crawl_result import CrawlResult
 from py_reportit.shared.model.meta import Meta
 from py_reportit.shared.model.meta_tweet import MetaTweet
 from py_reportit.shared.model.report_answer import ReportAnswer
-from py_reportit.shared.model.answer_meta import ReportAnswerMeta
+from py_reportit.shared.model.answer_meta import ClosingType, ReportAnswerMeta
 from py_reportit.shared.model.answer_meta_tweet import AnswerMetaTweet
 from py_reportit.crawler.util.reportit_utils import get_last_tweet_id
 
 
 logger = logging.getLogger(f"py_reportit.{__name__}")
+
+CLOSING_TYPE_TO_EMOJI = {
+    ClosingType.CLOSED: "✅",
+    ClosingType.NOT_CLOSED: "📤",
+    ClosingType.PARTIALLY_CLOSED: "☑️"
+}
 
 class Twitter(AbstractPostProcessor):
 
@@ -135,12 +141,17 @@ class Twitter(AbstractPostProcessor):
         timestamp = answer.created_at.strftime('%Y-%m-%d')
         has_message_text = "with message:\n\n" if answer.text and answer.text != "" else "with no message."
         title_variant = "closed this report" if answer.closing else "updated this report"
-        emoji = "✅" if answer.closing else "📤"
+        emoji = CLOSING_TYPE_TO_EMOJI[answer.meta.closing_type]
         title = f"{emoji} {answer.author} {title_variant} {has_message_text}"
         complete_text = f"{timestamp}\n{title}{answer.text}"
 
         tweet_ids = self.tweet_service.tweet_thread(complete_text, answer_to=last_tweet_id)
-        tweet_metas = [AnswerMetaTweet(order=order, tweet_id=message_id) for order, message_id in enumerate(tweet_ids)]
+        tweet_metas = [AnswerMetaTweet(order=order, type="answer", tweet_id=message_id) for order, message_id in enumerate(tweet_ids)]
+
+        if answer.meta.closing_type == ClosingType.PARTIALLY_CLOSED:
+            partial_closing_text = "⚠️ It appears as if the city has stated that it will answer via snail mail, and the report is not actually closed.\n\nUnfortunately, this renders the outcome of this report opaque, and the progress (if any) will not be publicly accessible."
+            partial_closing_tweet_ids = self.tweet_service.tweet_thread(partial_closing_text, answer_to=tweet_ids[-1])
+            tweet_metas.extend([AnswerMetaTweet(order=order, type="partial_closure", tweet_id=message_id) for order, message_id in enumerate(partial_closing_tweet_ids)])
 
         answer.meta.tweeted = True
         answer.meta.tweet_ids = tweet_metas

@@ -1,9 +1,8 @@
-from typing import Text
-
 from sqlalchemy.sql.sqltypes import Unicode
-from py_reportit.shared.model.orm_base import Base
 from sqlalchemy.orm import relationship
 from sqlalchemy import Column, DateTime, Boolean, SmallInteger, Integer, UnicodeText, ForeignKey
+
+from py_reportit.shared.model.orm_base import Base
 
 class ReportAnswer(Base):
 

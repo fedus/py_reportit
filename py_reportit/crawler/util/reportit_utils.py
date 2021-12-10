@@ -16,16 +16,28 @@ def get_last_tweet_id(report: Report) -> str:
     if report.answers and len(report.answers):
         all_answers: list[ReportAnswer] = report.answers
         all_answers_with_tweet_ids = list(filter(lambda answer: answer.meta.tweet_ids and len(answer.meta.tweet_ids), all_answers))
+
         if len(all_answers_with_tweet_ids):
             newest_answer = max(all_answers_with_tweet_ids, key=lambda answer: answer.order)
             answer_meta: ReportAnswerMeta = newest_answer.meta
             tweet_ids: list[AnswerMetaTweet] = answer_meta.tweet_ids
+
+            partial_closure_tweet_ids = list(filter(lambda tweet_id: tweet_id.type == "partial_closure", tweet_ids))
+
+            if len(partial_closure_tweet_ids):
+                return max(partial_closure_tweet_ids, key=lambda tweet_id: tweet_id.order).tweet_id
+
             return max(tweet_ids, key=lambda tweet_id: tweet_id.order).tweet_id
+
     report_meta: Meta = report.meta
+
     if report_meta.tweet_ids:
         tweet_ids: list[MetaTweet] = report_meta.tweet_ids
         follow_tweet_id = next(filter(lambda tweet_id: tweet_id.type == "follow", tweet_ids), False)
+
         if follow_tweet_id:
             return follow_tweet_id.tweet_id
+
         return max(tweet_ids, key=lambda tweet_id: tweet_id.order).tweet_id
+
     return None

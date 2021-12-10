@@ -7,6 +7,7 @@ class AnswerMetaTweet(Base):
 
     id = Column(Integer, primary_key=True)
     answer_meta_id = Column(Integer, ForeignKey('answer_meta.id'), nullable=False)
+    type = Column(Unicode(20), nullable=False)
     order = Column(SmallInteger, nullable=False)
     tweet_id = Column(Unicode(30), nullable=False)
 
