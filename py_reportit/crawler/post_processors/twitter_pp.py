@@ -14,7 +14,7 @@ from py_reportit.shared.model.meta_tweet import MetaTweet
 from py_reportit.shared.model.report_answer import ReportAnswer
 from py_reportit.shared.model.answer_meta import ClosingType, ReportAnswerMeta
 from py_reportit.shared.model.answer_meta_tweet import AnswerMetaTweet
-from py_reportit.crawler.util.reportit_utils import get_last_tweet_id
+from py_reportit.crawler.util.reportit_utils import get_last_tweet_id, calc_expected_status_length
 
 
 logger = logging.getLogger(f"py_reportit.{__name__}")
@@ -188,7 +188,9 @@ class TweetService:
             media = self.upload_media(media_filename)
             logger.debug(f"Uploaded media: {media}")
         parts = [text]
-        if len(text) >= 280:
+        expected_status_length = calc_expected_status_length(text)
+        logger.debug(f"Tweet length: expected: {expected_status_length}, raw: {len(text)}")
+        if expected_status_length >= 280:
             logger.debug("Text length >= 280 chars, wrapping it")
             raw_wrapped = wrap(text, 270, replace_whitespace=False)
             parts = list(map(lambda part_tuple: f"{part_tuple[1]} {part_tuple[0]+1}/{len(raw_wrapped)}", enumerate(raw_wrapped)))
@@ -196,7 +198,8 @@ class TweetService:
         last_status = answer_to
         tweet_ids = []
         for index, part in enumerate(parts):
-            logger.debug(f"Tweeting part {index+1}/{len(parts)}")
+            expected_part_length = calc_expected_status_length(part)
+            logger.debug(f"Tweeting part {index+1}/{len(parts)} (length: expected: {expected_part_length}, raw: {len(part)})")
             tweet_params = { 'status': part }
             if index == 0 and media:
                 tweet_params['media_ids'] = [media.media_id]
@@ -215,7 +218,7 @@ class TweetService:
                 try:
                     last_status = self.api.update_status(**tweet_params).id
                 except:
-                    logger.error(f"Failed while tweeting, message length: {len(part)}, params: {tweet_params}")
+                    logger.error(f"Failed while tweeting, message length: expected: {expected_part_length}, raw: {len(part)}, params: {tweet_params}")
                     raise
                 tweet_ids.append(last_status)
         return tweet_ids
