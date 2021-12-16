@@ -3,7 +3,6 @@ import sys
 import tweepy
 
 from time import sleep
-from textwrap import wrap
 from sqlalchemy.sql.elements import and_
 
 from py_reportit.crawler.post_processors.abstract_pp import AbstractPostProcessor
@@ -14,7 +13,7 @@ from py_reportit.shared.model.meta_tweet import MetaTweet
 from py_reportit.shared.model.report_answer import ReportAnswer
 from py_reportit.shared.model.answer_meta import ClosingType, ReportAnswerMeta
 from py_reportit.shared.model.answer_meta_tweet import AnswerMetaTweet
-from py_reportit.crawler.util.reportit_utils import get_last_tweet_id, calc_expected_status_length
+from py_reportit.crawler.util.reportit_utils import get_last_tweet_id, calc_expected_status_length, twitter_wrap
 
 
 logger = logging.getLogger(f"py_reportit.{__name__}")
@@ -192,7 +191,7 @@ class TweetService:
         logger.debug(f"Tweet length: expected: {expected_status_length}, raw: {len(text)}")
         if expected_status_length >= 280:
             logger.debug("Text length >= 280 chars, wrapping it")
-            raw_wrapped = wrap(text, 270, replace_whitespace=False)
+            raw_wrapped = twitter_wrap(text, 274, replace_whitespace=False)
             parts = list(map(lambda part_tuple: f"{part_tuple[1]} {part_tuple[0]+1}/{len(raw_wrapped)}", enumerate(raw_wrapped)))
         parts.extend(extra_parts)
         last_status = answer_to
