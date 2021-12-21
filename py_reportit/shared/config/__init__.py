@@ -14,6 +14,8 @@ config = {
     **dotenv_values(f"{base_path}/.shared.base.env"),
     **dotenv_values(f"{base_path}/.secrets.{dotenv_variant}.env"),
     **dotenv_values(f"{base_path}/.shared.{dotenv_variant}.env"),
+    **dotenv_values(f"{base_path}/.secrets.local.env"),
+    **dotenv_values(f"{base_path}/.shared.local.env"),
     **os.environ,
     "DEV": is_dev,
     "ONE_OFF": is_one_off,

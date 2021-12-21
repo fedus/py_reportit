@@ -3,14 +3,14 @@ import sys
 
 from time import sleep
 
-from py_reportit.crawler.post_processors.abstract_pp import AbstractPostProcessor
+from py_reportit.crawler.post_processors.abstract_pp import PostProcessor
 from py_reportit.shared.model.report import Report
 from py_reportit.shared.model.meta import Meta
 
 
 logger = logging.getLogger(f"py_reportit.{__name__}")
 
-class Geocode(AbstractPostProcessor):
+class Geocode(PostProcessor):
 
     def process(self, new_or_updated_reports: list[Report]):
         if not int(self.config.get("GEOCODE_ACTIVE")):

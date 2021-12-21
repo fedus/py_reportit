@@ -1,10 +1,26 @@
+import logging
+
+from typing import Iterable
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker as sqlalchemy_sessionmaker
+from sqlalchemy.orm.session import Session
 
-from py_reportit.shared.config import config
+logger = logging.getLogger(f"py_reportit.{__name__}")
 
-db_url = f"mysql+pymysql://{config.get('DB_USER')}:{config.get('DB_PASSWORD')}@{config.get('DB_HOST')}:{config.get('DB_PORT')}/{config.get('DB_DATABASE')}?charset=utf8mb4"
+class Database:
 
-engine = create_engine(db_url, pool_recycle=400, echo=config.get("LOG_LEVEL") == "DEBUG", future=True)
+    def __init__(self, log_level, **kwargs):
+        self.db_url = self.get_db_url(**kwargs)
+        self.engine = create_engine(self.db_url, pool_recycle=400, echo=log_level == "DEBUG", future=True)
+        self.sqlalchemy_sessionmaker = sqlalchemy_sessionmaker(self.engine)
 
-SessionLocal = sessionmaker(engine)
+    @staticmethod
+    def get_db_url(db_user, db_password, db_host, db_port, db_database) -> str:
+        return f"mysql+pymysql://{db_user}:{db_password}@{db_host}:{db_port}/{db_database}?charset=utf8mb4"
+
+def get_session(database: Database) -> Iterable[Session]:
+    logger.debug("Getting session ...")
+    with database.sqlalchemy_sessionmaker() as session:
+        logger.debug("Yielding session")
+        yield session
+    logger.debug("Closing session")

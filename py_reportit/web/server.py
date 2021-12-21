@@ -1,14 +1,14 @@
+from dependency_injector.wiring import Provide, inject
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi import Query, Path
 from fastapi.responses import FileResponse
 from typing import List, Optional
-from sqlalchemy.orm import Session
 from os import path
 from enum import Enum
 from datetime import date
 
+from py_reportit.shared.config.container import Container
 from py_reportit.shared.config import config
-from py_reportit.shared.config.db import SessionLocal
 from py_reportit.web.schema.report import PagedReportList, Report
 from py_reportit.shared.model import *
 from py_reportit.shared.repository.report import ReportRepository
@@ -71,15 +71,8 @@ class PhotoState(str, Enum):
     WITH_PHOTO = "with"
     WITHOUT_PHOTO = "without"
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 @app.get("/reports", response_model=PagedReportList, tags=["reports"])
+@inject
 def get_reports(
     page: str = Query(None, description="The page to retrieve for the paginated query."),
     page_size: int = Query(50, description="The amount of reports per page."),
@@ -93,7 +86,7 @@ def get_reports(
     neighbourhood: Optional[str] = Query(None, description="The neighbourhood to search for."),
     postcode: Optional[int] = Query(None, description="The postcode to search for."),
     search_text: Optional[str] = Query(None, description="Only reports matching the given search text in their title or description will be returned."),
-    db: Session = Depends(get_db)
+    report_repository: ReportRepository = Depends(Provide[Container.report_repository])
 ):
     """
     Make queries for paginated and filtered reports.
@@ -133,7 +126,7 @@ def get_reports(
         search_attrs = list(map(lambda search_attr: report.Report.__dict__[search_attr], ["title", "description"]))
         or_q = list(map(lambda col: col.like(f'%{search_text}%'), search_attrs))
 
-    paged_reports_with_count = ReportRepository(db).get_paged(
+    paged_reports_with_count = report_repository.get_paged(
         page_size=boxed_page_size,
         page=page,
         by=report.Report.__dict__[sort_by],
@@ -152,21 +145,23 @@ def get_reports(
     )
 
 @app.get("/reports/all", response_model=List[Report], tags=["reports"])
-def get_reports(db: Session = Depends(get_db)):
+@inject
+def get_reports(report_repository: ReportRepository = Depends(Provide[Container.report_repository])):
     """
     Retrieve all reports in the system, basically a database dump.
     **Using this endpoint is strongly discouraged.** Please consider using the paginated and filtered endpoint instead!
     """
-    return ReportRepository(db).get_all()
+    return report_repository.get_all()
 
 @app.get("/reports/{reportId}", response_model=Report, tags=["reports"])
-def get_report(reportId: int = Path(None, description="The ID of the report to retrieve"), db: Session = Depends(get_db)):
+@inject
+def get_report(reportId: int = Path(None, description="The ID of the report to retrieve"), report_repository: ReportRepository = Depends(Provide[Container.report_repository])):
     """
     Retrieve the report related to a given ID.
     \f
     :param reportId: The report ID
     """
-    report = ReportRepository(db).get_by_id(reportId)
+    report = report_repository.get_by_id(reportId)
     if report is None:
         raise HTTPException(status_code=404, detail=f"Report with id {reportId} does not exist")
     return report
@@ -183,3 +178,12 @@ async def get_photo(reportId: int = Path(None, description="The report ID for wh
     if not path.isfile(photo_filename):
         raise HTTPException(status_code=404, detail=f"No photo found for report with id {reportId}")
     return FileResponse(photo_filename)
+
+container = Container()
+
+container.config.from_dict(config)
+
+container.init_resources()
+container.wire(modules=[__name__])
+
+app.container = container

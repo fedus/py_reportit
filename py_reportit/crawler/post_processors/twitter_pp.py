@@ -5,7 +5,7 @@ import tweepy
 from time import sleep
 from sqlalchemy.sql.elements import and_
 
-from py_reportit.crawler.post_processors.abstract_pp import AbstractPostProcessor
+from py_reportit.crawler.post_processors.abstract_pp import PostProcessor
 from py_reportit.shared.model.report import Report
 from py_reportit.shared.model.crawl_result import CrawlResult
 from py_reportit.shared.model.meta import Meta
@@ -24,7 +24,7 @@ CLOSING_TYPE_TO_EMOJI = {
     ClosingType.PARTIALLY_CLOSED: "☑️"
 }
 
-class Twitter(AbstractPostProcessor):
+class Twitter(PostProcessor):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

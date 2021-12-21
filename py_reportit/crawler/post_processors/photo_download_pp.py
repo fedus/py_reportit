@@ -6,13 +6,13 @@ from PIL import Image
 from PIL import ImageOps
 from io import BytesIO
 
-from py_reportit.crawler.post_processors.abstract_pp import AbstractPostProcessor
+from py_reportit.crawler.post_processors.abstract_pp import PostProcessor
 from py_reportit.shared.model.report import Report
 from py_reportit.shared.model.meta import Meta
 
 
 logger = logging.getLogger(f"py_reportit.{__name__}")
-class PhotoDownload(AbstractPostProcessor):
+class PhotoDownload(PostProcessor):
 
     def process(self, new_or_updated_reports: list[Report]):
         unprocessed_reports = self.report_repository.get_by(Report.photo_url != None, Report.meta.has(Meta.photo_downloaded==False))

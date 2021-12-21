@@ -1,13 +1,13 @@
 import logging
 import sys
 
-from py_reportit.crawler.post_processors.abstract_pp import AbstractPostProcessor
+from py_reportit.crawler.post_processors.abstract_pp import PostProcessor
 from py_reportit.shared.model.report import Report
 from py_reportit.shared.model.meta import Meta
 
 
 logger = logging.getLogger(f"py_reportit.{__name__}")
-class AnswerFetch(AbstractPostProcessor):
+class AnswerFetch(PostProcessor):
 
     def process(self, new_or_updated_reports: list[Report]):
         finished_reports_with_no_answers = self.report_repository.get_by(

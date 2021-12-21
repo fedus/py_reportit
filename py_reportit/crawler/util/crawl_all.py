@@ -2,36 +2,36 @@ import sys
 
 from time import sleep
 
-from sqlalchemy.orm import sessionmaker
+from dependency_injector.wiring import Provide, inject
 
+from py_reportit.shared.config.container import run_with_container
 from py_reportit.shared.config import config
 from py_reportit.crawler.service.reportit_api import ReportItService, ReportNotFoundException
 from py_reportit.shared.repository.report import ReportRepository
 from py_reportit.shared.repository.report_answer import ReportAnswerRepository
-from py_reportit.shared.config.db import engine
 
-Session = sessionmaker(engine)
 
-service = ReportItService(config)
+@inject
+def crawl_all(
+    config: dict = Provide["config"],
+    service: ReportItService = Provide["reportit_service"],
+    report_repository: ReportRepository = Provide["report_repository"],
+    answer_repository: ReportAnswerRepository = Provide["report_answer_repository"],
+):
+    success = []
+    repository_errors = []
+    non_existent_reports = []
 
-success = []
-repository_errors = []
-non_existent_reports = []
+    start_id = int(config.get("CRAWL_ALL_START", -1))
+    end_id = int(config.get("CRAWL_ALL_END", -1))
+    dry_run = bool(int(config.get("CRAWL_ALL_DRY_RUN", 0)))
+    print_success = bool(int(config.get("CRAWL_ALL_PRINT_SUCCESS", 0)))
 
-start_id = int(config.get("CRAWL_ALL_START", -1))
-end_id = int(config.get("CRAWL_ALL_END", -1))
-dry_run = bool(int(config.get("CRAWL_ALL_DRY_RUN", 0)))
-print_success = bool(int(config.get("CRAWL_ALL_PRINT_SUCCESS", 0)))
+    sleep_seconds = int(config.get("CRAWL_SLEEP", 1))
 
-sleep_seconds = int(config.get("CRAWL_SLEEP", 1))
-
-if start_id < 0 or end_id < 0:
-    print("No start and / or end ID set, aborting.")
-    quit()
-
-with Session() as session:
-    report_repository = ReportRepository(session)
-    answer_repository = ReportAnswerRepository(session)
+    if start_id < 0 or end_id < 0:
+        print("No start and / or end ID set, aborting.")
+        quit()
 
     for id in range(start_id, end_id+1):
         try:
@@ -59,18 +59,23 @@ with Session() as session:
             sys.stdout.flush()
             repository_errors.append([id, e])
 
-print()
-print("=== SUMMARY ===")
-print(f"{len(non_existent_reports)} non existent reports:")
-print(", ".join(map(str, non_existent_reports)))
-print()
+    print()
+    print("=== SUMMARY ===")
+    print(f"{len(non_existent_reports)} non existent reports:")
+    print(", ".join(map(str, non_existent_reports)))
+    print()
 
-print(f"{len(repository_errors)} failures:")
-for err in repository_errors:
-    print(err)
-print()
+    print(f"{len(repository_errors)} failures:")
+    for err in repository_errors:
+        print(err)
+    print()
 
-print(f"{len(success)} successes:")
-print(", ".join(map(str, success)))
+    print(f"{len(success)} successes:")
+    print(", ".join(map(str, success)))
 
-print("=== FINISHED ===")
+    print("=== FINISHED ===")
+
+if __name__ == "__main__":
+    run_with_container(config, lambda: crawl_all())
+else:
+    print("Main module was imported, but is meant to run as standalone")

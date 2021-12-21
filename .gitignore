@@ -139,3 +139,4 @@ cython_debug/
 
 # Dotenv files with secrets
 *secrets.*.env
+*.local.env

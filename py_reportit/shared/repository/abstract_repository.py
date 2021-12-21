@@ -17,6 +17,10 @@ class AbstractRepository(ABC, Generic[Model]):
 
     model: Type[Model] = None
 
+    @classmethod
+    def create(cls, db):
+        return cls(db.get_session())
+
     def __init__(self, session: Session):
         self.session = session
         super().__init__()

@@ -1,3 +1,5 @@
+import dataclasses
+
 from abc import ABC, abstractmethod
 from py_reportit.crawler.service.geocoder import GeocoderService
 
@@ -9,7 +11,7 @@ from py_reportit.shared.repository.crawl_result import CrawlResultRepository
 from py_reportit.shared.repository.meta import MetaRepository
 from py_reportit.shared.repository.report import ReportRepository
 
-class AbstractPostProcessor(ABC):
+class PostProcessor(ABC):
 
     def __init__(self,
                  config: dict,
@@ -31,3 +33,7 @@ class AbstractPostProcessor(ABC):
     @abstractmethod
     def process(self, new_or_updated_reports: list[Report]):
         pass
+
+@dataclasses.dataclass
+class PostProcessorDispatcher:
+    post_processors: list[PostProcessor]

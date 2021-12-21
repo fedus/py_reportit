@@ -5,8 +5,17 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from py_reportit.shared.config.db import db_url
+from py_reportit.shared.config import config
+from py_reportit.shared.config.db import Database
 from py_reportit.shared.model import *
+
+db_url = Database.get_db_url(
+    config.get("DB_USER"),
+    config.get("DB_PASSWORD"),
+    config.get("DB_HOST"),
+    config.get("DB_PORT"),
+    config.get("DB_DATABASE"),
+)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
