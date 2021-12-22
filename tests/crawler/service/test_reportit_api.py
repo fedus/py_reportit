@@ -1,6 +1,7 @@
 import requests
 import pytest
 
+from types import SimpleNamespace
 from datetime import datetime
 
 from py_reportit.shared.config.container import Container
@@ -50,16 +51,13 @@ MOCK_REPORTS = [
     },
 ]
 
-class RequestsMock:
-    pass
-
 @pytest.fixture
 def container() -> Container:
     return Container()
 
 def test_get_reports(monkeypatch, container: Container):
-    RequestsMock.json = lambda: { "reports": MOCK_REPORTS }
-    monkeypatch.setattr(requests, "get", lambda url: RequestsMock)
+    requests_mock = SimpleNamespace(json=lambda: { "reports": MOCK_REPORTS })
+    monkeypatch.setattr(requests, "get", lambda url: requests_mock)
     
     reportit_service = container.reportit_service()
 
