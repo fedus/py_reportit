@@ -48,17 +48,17 @@ class ReportItService:
         # Get title
         header_selection = soup.select(".panel-heading b")
         raw_header = header_selection[0].text.strip() if len(header_selection) else ""
-        title_regex = re.search("(?<=\d\s:).*", raw_header)
+        title_regex = re.search(r"(?<=\d\s:).*", raw_header)
         report_properties["title"] = title_regex.group().strip() if title_regex else None
 
         # Get description
         description_selection = soup.select(".panel-body .row .panel-default .panel-body")
         raw_description = description_selection[0].text.strip() if len(description_selection) else ""
-        description_regex = re.search("Description\s:\n(.*)", raw_description, re.DOTALL)
+        description_regex = re.search(r"Description\s:\n(.*)", raw_description, re.DOTALL)
         report_properties["description"] = description_regex.group(1).strip() if description_regex else None
 
         # Get status
-        status_regex = re.search(".*label\slabel-success.*", r.text)
+        status_regex = re.search(r".*label\slabel-success.*", r.text)
         report_properties["status"] = "finished" if status_regex else "accepted"
 
         # Get created datetime
@@ -72,12 +72,13 @@ class ReportItService:
         if len(gps_and_image_urls_selection) >= 1:
             # Only GPS position
             gps_url = gps_and_image_urls_selection[0]['src']
-            gps_regex = re.search("center=(\d*\.\d*,\d*\.\d*)", gps_url)
+            gps_regex = re.search(r"center=(\d*\.\d*,\d*\.\d*)", gps_url)
             gps = gps_regex.group(1).strip() if gps_regex else None
             report_properties["latitude"], report_properties["longitude"] = gps.split(',') if gps else (None, None)
         if len(gps_and_image_urls_selection) == 2:
             # Both GPS position and image
-            report_properties["photo_url"] = gps_and_image_urls_selection[1]['src']
+            report_properties["photo_url"] = f"https://reportit.vdl.lu/photo/{reportId}.jpg"
+            report_properties["thumbnail_url"] = f"https://reportit.vdl.lu/thumbnail/{reportId}.jpg"
 
         report = Report(**report_properties, meta=Meta(is_online=False))
         answers = self.get_answers(reportId, pre_fetched_page=r)
@@ -113,7 +114,7 @@ class ReportItService:
     def extract_from_message_block(block: ResultSet) -> dict:
         author = block.select(".panel-heading i")[0].text.strip()
         raw_header = block.select(".panel-heading")[0].text.strip()
-        raw_timestamp = re.search("(\d{2}\.\d{2}\.\d{4} \d{2}:\d{2})", raw_header).group()
+        raw_timestamp = re.search(r"(\d{2}\.\d{2}\.\d{4} \d{2}:\d{2})", raw_header).group()
         created_at = datetime.strptime(raw_timestamp, '%d.%m.%Y %H:%M')
         closing = raw_header.split()[0].lower() == "closed"
         raw_text = block.select(".panel-body")
