@@ -2,7 +2,7 @@ name: Test & build & deploy
 
 on:
   release:
-    types: [released]
+    types: [published]
 
 env:
   REGISTRY: ghcr.io
