@@ -38,7 +38,7 @@ class GeocoderService:
             postcode = address_json['postcode'] if 'postcode' in address_json else None
             neighbourhood = address_json['suburb'] if 'suburb' in address_json else None
         else:
-            logger.warn(f'Encountered geocode that is not Luxembourg: {address_json["country_code"]} for lat {latitude} and lon {longitude}, returning empty geolocation data')
+            logger.warning(f'Encountered geocode that is not Luxembourg: {address_json["country_code"]} for lat {latitude} and lon {longitude}, returning empty geolocation data')
 
         return GeocodeResult(
             street=street,
