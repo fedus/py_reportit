@@ -4,6 +4,7 @@ from time import time, sleep
 from datetime import datetime
 
 from dependency_injector.wiring import Provide, inject
+from dependency_injector.providers import Resource
 
 from py_reportit.shared.config.container import Container, run_with_container
 from py_reportit.shared.model import *
@@ -27,11 +28,12 @@ class App:
         self.do_shutdown = False
 
     @inject
-    def execute_crawler(self, crawler: CrawlerService = Provide[Container.crawler_service]):
+    def execute_crawler(self, crawler: CrawlerService = Provide[Container.crawler_service], session_provider: Resource = Provide[Container.session.provider]):
         logger.info(f"Starting crawl at {datetime.now()}")
 
         try:
             crawler.crawl()
+            session_provider.shutdown()
         except KeyboardInterrupt:
             raise
         except:
@@ -62,7 +64,7 @@ class App:
     def initiate_shutdown(self, signum, frame):
         logger.info(f'Received: {signum}, initiating shutdown')
         self.do_shutdown = True
-        raise ShutdownException 
+        raise ShutdownException
 
 if __name__ == "__main__":
     run_with_container(config, lambda: App().run())

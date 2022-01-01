@@ -1,5 +1,5 @@
 from dependency_injector.wiring import Provide, inject
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi import Query, Path
 from fastapi.responses import FileResponse
 from typing import List, Optional
@@ -44,6 +44,10 @@ tags_metadata = [
     },
 ]
 
+def reset_session(request: Request):
+    yield
+    request.app.container.session.shutdown()
+
 app = FastAPI(
     title="Report-It Unchained API",
     description=description,
@@ -58,7 +62,8 @@ app = FastAPI(
     #    "name": "Apache 2.0",
     #    "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
     #},
-    openapi_tags=tags_metadata
+    openapi_tags=tags_metadata,
+    dependencies=[Depends(reset_session)]
 )
 
 class ReportState(str, Enum):
@@ -183,7 +188,6 @@ container = Container()
 
 container.config.from_dict(config)
 
-container.init_resources()
 container.wire(modules=[__name__])
 
 app.container = container

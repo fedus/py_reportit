@@ -19,7 +19,7 @@ class Container(containers.DeclarativeContainer):
     config = providers.Configuration()
 
     # Database & session
-    db = providers.Factory(
+    db = providers.Singleton(
         Database,
         db_user=config.DB_USER,
         db_password=config.DB_PASSWORD,
@@ -107,7 +107,6 @@ def run_with_container(config: dict, callable: Callable, modules: list[str] = ["
 
     container.config.from_dict(config)
 
-    container.init_resources()
     container.wire(modules=modules)
 
     callable()
