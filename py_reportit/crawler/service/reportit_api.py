@@ -1,15 +1,18 @@
+import requests, re, logging
+
 from bs4.element import ResultSet
-import requests, re
 from bs4 import BeautifulSoup
 from datetime import datetime
-
 from requests.models import Response
+from time import sleep
 
 from py_reportit.shared.model import *
 from py_reportit.shared.model.meta import Meta
 from py_reportit.shared.model.report import Report
 from py_reportit.shared.model.report_answer import ReportAnswer
 from py_reportit.shared.model.answer_meta import ReportAnswerMeta
+
+logger = logging.getLogger(f"py_reportit.{__name__}")
 
 class ReportItService:
 
@@ -31,6 +34,21 @@ class ReportItService:
             )
         )
         return sorted(unsorted_reports, key=lambda report: report.id)
+
+    def get_bulk_reports(self, reportIds: list[int]) -> list[Report]:
+        logger.info(f"Fetching bulk reports, {reportIds[0]} - {reportIds[-1]}")
+
+        reports = []
+
+        for reportId in reportIds:
+            try:
+                logger.debug(f"Fetching report with id {reportId}")
+                reports.append(self.get_report_with_answers(reportId))
+                sleep(float(self.config.get("FETCH_REPORTS_BULK_DELAY_SECONDS")))
+            except ReportNotFoundException:
+                logger.debug(f"No report found with id {reportId}, skipping.")
+
+        return reports
 
     def get_report_with_answers(self, reportId: int) -> Report:
         r = self.fetch_report_page(reportId)
@@ -95,7 +113,7 @@ class ReportItService:
 
 
     def get_answers(self, reportId: int, pre_fetched_page: Response = None) -> list[ReportAnswer]:
-        r = pre_fetched_page or requests.post(self.config.get("REPORTIT_API_ANSWER_URL"), {"searchId": reportId})
+        r = pre_fetched_page or self.fetch_report_page(reportId)
 
         soup = BeautifulSoup(r.text, 'html.parser')
 
@@ -108,7 +126,7 @@ class ReportItService:
         return [ReportAnswer(**message_dict, order=order, report_id=reportId, meta=ReportAnswerMeta()) for order, message_dict in enumerate(message_dicts)]
 
     def fetch_report_page(self, reportId: int) -> Response:
-        return requests.post(self.config.get("REPORTIT_API_ANSWER_URL"), {"searchId": reportId})
+        return requests.post(self.config.get("REPORTIT_API_ANSWER_URL"), {"search_id": reportId})
 
     @staticmethod
     def extract_from_message_block(block: ResultSet) -> dict:

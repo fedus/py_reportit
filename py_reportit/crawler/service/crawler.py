@@ -1,6 +1,6 @@
 import logging, sys
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from py_reportit.shared.model.crawl_result import CrawlResult
 from py_reportit.shared.model.report import Report
@@ -80,12 +80,25 @@ class CrawlerService:
 
         try:
             logger.info("Fetching reports")
-            reports = self.api_service.get_reports()
+
+            recent_ids = self.report_repository.get_ids_by(Report.created_at > datetime.today() - timedelta(days=int(self.config.get("FETCH_REPORTS_OF_LAST_DAYS"))))
+
+            if not recent_ids:
+                recent_ids = self.report_repository.get_latest_ids(int(self.config.get("FETCH_REPORTS_FALLBACK_AMOUNT")))
+
+            if not recent_ids:
+                recent_ids = [int(self.config.get("FETCH_REPORTS_FALLBACK_START_ID"))]
+
+            combined_ids = recent_ids + list(range(recent_ids[-1] + 1, recent_ids[-1] + 1 + int(self.config.get("FETCH_REPORTS_LOOKAHEAD_AMOUNT"))))
+
+            reports = self.api_service.get_bulk_reports(combined_ids)
 
             logger.info(f"{len(reports)} reports fetched")
-            new_or_updated_reports = self.filter_updated_reports(pre_crawl_reports, reports)
+            new_or_updated_reports = self.filter_updated_reports(pre_crawl_reports, reports) # Make compatible with new crawl technique
             self.report_repository.update_or_create_all(reports)
-            self.meta_repository.update_many({"is_online": False}, Meta.report_id.notin_(extract_ids(reports)), Meta.is_online == True)
+            for report in reports:
+                self.report_answer_repository.update_or_create_all(report.answers)
+            self.meta_repository.update_many({"is_online": False}, Meta.report_id.notin_(extract_ids(reports)), Meta.is_online == True) # remove
         except KeyboardInterrupt:
             raise
         except:
