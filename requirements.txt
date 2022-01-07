@@ -1,6 +1,7 @@
 aiofiles==0.5.0
 alembic==1.6.5
 aniso8601==7.0.0
+anyio==3.4.0
 async-exit-stack==1.0.1
 async-generator==1.10
 attrs==21.2.0
@@ -11,7 +12,7 @@ click==7.1.2
 dependency-injector==4.37.0
 dnspython==2.1.0
 email-validator==1.1.3
-fastapi==0.68.1
+fastapi==0.70.1
 graphene==2.1.9
 graphql-core==2.3.2
 graphql-relay==2.0.1
@@ -46,10 +47,11 @@ requests==2.25.1
 requests-oauthlib==1.3.0
 Rx==1.6.1
 six==1.16.0
+sniffio==1.2.0
 soupsieve==2.2.1
 sqlakeyset==1.0.1629029818
-SQLAlchemy==1.4.20
-starlette==0.14.2
+SQLAlchemy==1.4.29
+starlette==0.16.0
 toml==0.10.2
 tweepy==3.10.0
 typing-extensions==3.10.0.2
@@ -58,4 +60,4 @@ urllib3==1.26.6
 uvicorn==0.13.4
 uvloop==0.16.0
 watchgod==0.7
-websockets==9.1
+websockets==8.1
