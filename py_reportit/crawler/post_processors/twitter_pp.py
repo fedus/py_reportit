@@ -89,7 +89,7 @@ class Twitter(PostProcessor):
 
     def tweet_report(self, report: Report) -> None:
         logger.info("Tweeting %s", report)
-        media_filename = f"{self.config.get('PHOTO_DOWNLOAD_FOLDER')}/{report.id}.jpg" if report.photo_url != None else None
+        media_filename = f"{self.config.get('PHOTO_DOWNLOAD_FOLDER')}/{report.id}.jpg" if report.has_photo else None
         title = f"{report.title}\n" if report.has_title else ""
         text = f"📩 {report.created_at.strftime('%Y-%m-%d')}\n{title}\n{report.description}"
         add_link = bool(int(self.config.get("TWITTER_ADD_REPORT_LINK")))

@@ -9,6 +9,7 @@ from py_reportit.shared.repository.report_answer import ReportAnswerRepository
 from py_reportit.crawler.service.crawler import CrawlerService
 from py_reportit.crawler.service.reportit_api import ReportItService
 from py_reportit.crawler.service.geocoder import GeocoderService
+from py_reportit.crawler.service.photo import PhotoService
 from py_reportit.crawler.post_processors.abstract_pp import PostProcessorDispatcher
 from py_reportit.crawler.post_processors import post_processors
 from py_reportit.crawler.post_processors.geocode_pp import Geocode
@@ -40,6 +41,7 @@ class Container(containers.DeclarativeContainer):
     # Services
     reportit_service = providers.Factory(ReportItService, config=config)
     geocoder_service = providers.Factory(GeocoderService, config=config)
+    photo_service = providers.Factory(PhotoService, config=config)
 
     # Helper function to work around scope limitations with class variables and list comprehension
     # see https://stackoverflow.com/questions/13905741/accessing-class-variables-from-a-list-comprehension-in-the-class-definition
@@ -92,6 +94,7 @@ class Container(containers.DeclarativeContainer):
         config=config,
         post_processor_dispatcher=post_processor_dispatcher,
         api_service=reportit_service,
+        photo_service=photo_service,
         report_repository=report_repository,
         meta_repository=meta_repository,
         report_answer_repository=report_answer_repository,

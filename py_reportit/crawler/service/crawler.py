@@ -1,13 +1,13 @@
 import logging, sys
 
 from datetime import datetime, timedelta
-
 from py_reportit.shared.model.report import Report
 from py_reportit.crawler.post_processors.abstract_pp import PostProcessorDispatcher
 from py_reportit.shared.repository.report import ReportRepository
 from py_reportit.shared.repository.meta import MetaRepository
 from py_reportit.shared.repository.report_answer import ReportAnswerRepository
 from py_reportit.crawler.service.reportit_api import ReportItService
+from py_reportit.crawler.service.photo import PhotoService
 from py_reportit.crawler.util.reportit_utils import extract_ids, filter_reports_by_state, reports_are_roughly_equal_by_position
 
 logger = logging.getLogger(f"py_reportit.{__name__}")
@@ -19,6 +19,7 @@ class CrawlerService:
                  config: dict,
                  post_processor_dispatcher: PostProcessorDispatcher,
                  api_service: ReportItService,
+                 photo_service: PhotoService,
                  report_repository: ReportRepository,
                  meta_repository: MetaRepository,
                  report_answer_repository: ReportAnswerRepository,
@@ -29,6 +30,7 @@ class CrawlerService:
         self.meta_repository = meta_repository
         self.report_answer_repository = report_answer_repository
         self.api_service = api_service
+        self.photo_service = photo_service
 
     def get_finished_reports_count(self) -> int:
         return self.report_repository.count_by(Report.status=="finished")
@@ -81,7 +83,8 @@ class CrawlerService:
         try:
             logger.info(f"Fetching {len(relevant_combined_ids)} reports, of which {len(relevant_combined_ids) - len(lookahead_ids)} existing reports")
 
-            reports = self.api_service.get_bulk_reports(relevant_combined_ids, crawl_stop_condition)
+            # TODO: Make sure photo_downloaded is propertly persisted in meta
+            reports = self.api_service.get_bulk_reports(relevant_combined_ids, crawl_stop_condition, self.photo_service.process_base64_photo_if_not_downloaded_yet)
 
             logger.info(f"{len(reports)} reports fetched")
             new_or_updated_reports = self.filter_updated_reports(recent_reports, reports)

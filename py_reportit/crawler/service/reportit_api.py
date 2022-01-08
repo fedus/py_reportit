@@ -1,12 +1,13 @@
-from typing import Callable
 import requests, re, logging, json
 
+from typing import Callable
 from base64 import b64decode
 from bs4.element import ResultSet
 from bs4 import BeautifulSoup
 from datetime import datetime
 from requests.models import Response
 from time import sleep
+from toolz.dicttoolz import dissoc
 
 from py_reportit.shared.model import *
 from py_reportit.shared.model.meta import Meta
@@ -32,7 +33,7 @@ class ReportItService:
         raw_reports = json.loads(reports_string_escaped)["reports"]
 
         most_recent_report = raw_reports[-1]
-        return Report(**most_recent_report)
+        return Report(**dissoc(most_recent_report, "thumbnail_url"))
 
     def get_reports(self) -> list[Report]:
         r = requests.get(self.config.get('REPORTIT_API_URL'))
@@ -47,7 +48,12 @@ class ReportItService:
         )
         return sorted(unsorted_reports, key=lambda report: report.id)
 
-    def get_bulk_reports(self, reportIds: list[int], stop_condition: Callable[[Report], bool]) -> list[Report]:
+    def get_bulk_reports(
+        self,
+        reportIds: list[int],
+        stop_condition: Callable[[Report], bool],
+        photo_callback: Callable[[Report, str], None] = None
+    ) -> list[Report]:
         logger.info(f"Fetching bulk reports, {reportIds[0]} - {reportIds[-1]}")
 
         reports = []
@@ -55,7 +61,7 @@ class ReportItService:
         for reportId in reportIds:
             try:
                 logger.debug(f"Fetching report with id {reportId}")
-                fetched_report = self.get_report_with_answers(reportId)
+                fetched_report = self.get_report_with_answers(reportId, photo_callback)
                 reports.append(fetched_report)
 
                 if stop_condition(fetched_report):
@@ -74,7 +80,7 @@ class ReportItService:
 
         return reports
 
-    def get_report_with_answers(self, reportId: int) -> Report:
+    def get_report_with_answers(self, reportId: int, photo_callback: Callable[[Report, str], None] = None) -> Report:
         r = self.fetch_report_page(reportId)
 
         if r.text.find("Sent on :") < 0:
@@ -110,7 +116,7 @@ class ReportItService:
 
         # Get GPS, image url
         gps_and_image_urls_selection = soup.select(".img-thumbnail")
-        report_properties["latitude"], report_properties["longitude"], report_properties["photo_url"] = None, None, None
+        report_properties["latitude"], report_properties["longitude"], report_properties["has_photo"] = None, None, False
         if len(gps_and_image_urls_selection) >= 1:
             # Only GPS position
             gps_url = gps_and_image_urls_selection[0]['src']
@@ -119,8 +125,7 @@ class ReportItService:
             report_properties["latitude"], report_properties["longitude"] = gps.split(',') if gps else (None, None)
         if len(gps_and_image_urls_selection) == 2:
             # Both GPS position and image
-            report_properties["photo_url"] = f"https://reportit.vdl.lu/photo/{reportId}.jpg"
-            report_properties["thumbnail_url"] = f"https://reportit.vdl.lu/thumbnail/{reportId}.jpg"
+            report_properties["has_photo"] = True
 
         report = Report(**report_properties, meta=Meta())
         answers = self.get_answers(reportId, pre_fetched_page=r)
@@ -132,6 +137,11 @@ class ReportItService:
             report.updated_at = report.created_at
             if report.status == 'finished':
                 report.meta.closed_without_answer = True
+
+        if report_properties["has_photo"] and photo_callback:
+            base64photo = gps_and_image_urls_selection[1]["src"].split("base64,")[1]
+            photo_callback(report, base64photo)
+            report.meta.photo_downloaded = True
 
         return report
 

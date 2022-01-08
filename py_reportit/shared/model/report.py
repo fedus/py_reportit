@@ -1,6 +1,6 @@
 from py_reportit.shared.model.orm_base import Base
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, String, Unicode, UnicodeText, Numeric, DateTime, SmallInteger
+from sqlalchemy import Column, Integer, String, Unicode, UnicodeText, Numeric, DateTime, SmallInteger, Boolean
 
 class Report(Base):
 
@@ -9,8 +9,7 @@ class Report(Base):
     id = Column(Integer, primary_key=True)
     title = Column(Unicode(255))
     description = Column(UnicodeText)
-    photo_url = Column(String(100))
-    thumbnail_url = Column(String(100))
+    has_photo = Column(Boolean)
     latitude = Column(Numeric(8,6))
     longitude = Column(Numeric(9,6))
     created_at = Column(DateTime)
@@ -25,8 +24,7 @@ class Report(Base):
         return f'<Report-It id={self.id!r}\n\
             title={self.title}\n\
             description={self.description}\n\
-            photo_url={self.photo_url}\n\
-            thumbnail_url={self.thumbnail_url}\n\
+            has_photo={self.has_photo}\n\
             latitude={self.latitude}\n\
             longitude={self.longitude}\n\
             created_at={self.created_at}\n\
