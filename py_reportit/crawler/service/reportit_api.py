@@ -45,6 +45,8 @@ class ReportItService:
                 logger.debug(f"Fetching report with id {reportId}")
                 reports.append(self.get_report_with_answers(reportId))
                 sleep(float(self.config.get("FETCH_REPORTS_BULK_DELAY_SECONDS")))
+            except KeyboardInterrupt:
+                raise
             except ReportNotFoundException:
                 logger.debug(f"No report found with id {reportId}, skipping.")
             except requests.exceptions.Timeout:

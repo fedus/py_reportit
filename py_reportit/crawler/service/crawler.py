@@ -56,22 +56,26 @@ class CrawlerService:
         return recent_reports
 
     def crawl(self):
-        logger.info("Fetching last crawl result")
-
         new_or_updated_reports = []
+
+        logger.info("Fetching recent reports from database")
         recent_reports = self.get_recent_reports()
 
         if recent_reports:
             recent_ids = extract_ids(recent_reports)
             closed_recent_report_ids = extract_ids(filter_reports_by_state(recent_reports, True))
+            logger.info(f"{len(recent_ids)} recent reports fetched, of which {len(closed_recent_report_ids)} are already closed")
         else:
-            recent_ids = [int(self.config.get("FETCH_REPORTS_FALLBACK_START_ID"))]
+            fallback_id = int(self.config.get("FETCH_REPORTS_FALLBACK_START_ID"))
+            recent_ids = [fallback_id]
+            logger.info(f"No recent reports found in database, beginning crawl from fallback id {fallback_id}")
 
-        all_combined_ids = recent_ids + list(range(recent_ids[-1] + 1, recent_ids[-1] + 1 + int(self.config.get("FETCH_REPORTS_LOOKAHEAD_AMOUNT"))))
+        lookahead_ids = list(range(recent_ids[-1] + 1, recent_ids[-1] + 1 + int(self.config.get("FETCH_REPORTS_LOOKAHEAD_AMOUNT"))))
+        all_combined_ids = recent_ids + lookahead_ids
         relevant_combined_ids = [report_id for report_id in all_combined_ids if report_id not in closed_recent_report_ids]
 
         try:
-            logger.info("Fetching reports")
+            logger.info(f"Fetching {len(relevant_combined_ids)} reports, of which {len(relevant_combined_ids) - len(lookahead_ids)} existing reports")
 
             reports = self.api_service.get_bulk_reports(relevant_combined_ids)
 
