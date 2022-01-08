@@ -1,5 +1,7 @@
-import requests, re, logging
+from typing import Callable
+import requests, re, logging, json
 
+from base64 import b64decode
 from bs4.element import ResultSet
 from bs4 import BeautifulSoup
 from datetime import datetime
@@ -22,6 +24,16 @@ class ReportItService:
     def __init__(self, config):
         self.config = config
 
+    def get_latest_truncated_report(self) -> Report:
+        r = requests.get(self.config.get('REPORTIT_API_URL'))
+
+        reports_string_raw = b64decode(re.search(self.config.get('REPORTIT_API_REPORTS_REGEX'), r.text).group(1))
+        reports_string_escaped = reports_string_raw.decode('raw_unicode_escape')
+        raw_reports = json.loads(reports_string_escaped)["reports"]
+
+        most_recent_report = raw_reports[-1]
+        return Report(**most_recent_report)
+
     def get_reports(self) -> list[Report]:
         r = requests.get(self.config.get('REPORTIT_API_URL'))
         unsorted_reports = list(
@@ -35,7 +47,7 @@ class ReportItService:
         )
         return sorted(unsorted_reports, key=lambda report: report.id)
 
-    def get_bulk_reports(self, reportIds: list[int]) -> list[Report]:
+    def get_bulk_reports(self, reportIds: list[int], stop_condition: Callable[[Report], bool]) -> list[Report]:
         logger.info(f"Fetching bulk reports, {reportIds[0]} - {reportIds[-1]}")
 
         reports = []
@@ -43,7 +55,13 @@ class ReportItService:
         for reportId in reportIds:
             try:
                 logger.debug(f"Fetching report with id {reportId}")
-                reports.append(self.get_report_with_answers(reportId))
+                fetched_report = self.get_report_with_answers(reportId)
+                reports.append(fetched_report)
+
+                if stop_condition(fetched_report):
+                    logger.info(f"Stop condition hit at report with id {reportId}, stopping bulk crawl")
+                    break
+
                 sleep(float(self.config.get("FETCH_REPORTS_BULK_DELAY_SECONDS")))
             except KeyboardInterrupt:
                 raise

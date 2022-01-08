@@ -16,6 +16,15 @@ def extract_ids(reports: list[Report]) -> list[int]:
 def filter_reports_by_state(reports: list[Report], finished: bool) -> list[Report]:
     return list(filter(lambda report: report.status == 'finished' if finished else 'accepted', reports))
 
+def truncate_float(f: float, decimals: int) -> float:
+    return int(f*10**decimals)/10**decimals
+
+def reports_are_roughly_equal_by_position(r1: Report, r2: Report, decimals: int) -> bool:
+    lats_are_equal = truncate_float(float(r1.latitude), decimals) == truncate_float(float(r2.latitude), decimals)
+    lons_are_equal = truncate_float(float(r1.longitude), decimals) == truncate_float(float(r2.longitude), decimals)
+
+    return lats_are_equal and lons_are_equal
+
 def get_last_tweet_id(report: Report) -> str:
     if report.answers and len(report.answers):
         all_answers: list[ReportAnswer] = report.answers

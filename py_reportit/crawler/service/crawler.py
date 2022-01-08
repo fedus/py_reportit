@@ -8,7 +8,7 @@ from py_reportit.shared.repository.report import ReportRepository
 from py_reportit.shared.repository.meta import MetaRepository
 from py_reportit.shared.repository.report_answer import ReportAnswerRepository
 from py_reportit.crawler.service.reportit_api import ReportItService
-from py_reportit.crawler.util.reportit_utils import extract_ids, filter_reports_by_state
+from py_reportit.crawler.util.reportit_utils import extract_ids, filter_reports_by_state, reports_are_roughly_equal_by_position
 
 logger = logging.getLogger(f"py_reportit.{__name__}")
 
@@ -74,10 +74,14 @@ class CrawlerService:
         all_combined_ids = recent_ids + lookahead_ids
         relevant_combined_ids = [report_id for report_id in all_combined_ids if report_id not in closed_recent_report_ids]
 
+        latest_truncated_report = self.api_service.get_latest_truncated_report()
+
+        crawl_stop_condition = lambda current_report: reports_are_roughly_equal_by_position(current_report, latest_truncated_report, 5)
+
         try:
             logger.info(f"Fetching {len(relevant_combined_ids)} reports, of which {len(relevant_combined_ids) - len(lookahead_ids)} existing reports")
 
-            reports = self.api_service.get_bulk_reports(relevant_combined_ids)
+            reports = self.api_service.get_bulk_reports(relevant_combined_ids, crawl_stop_condition)
 
             logger.info(f"{len(reports)} reports fetched")
             new_or_updated_reports = self.filter_updated_reports(recent_reports, reports)
