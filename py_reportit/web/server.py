@@ -1,4 +1,4 @@
-from dependency_injector.wiring import Provide, inject
+from dependency_injector.wiring import Provide, Provider, inject
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi import Query, Path
 from fastapi.responses import FileResponse
@@ -6,6 +6,7 @@ from typing import List, Optional
 from os import path
 from enum import Enum
 from datetime import date
+from sqlalchemy.orm.session import Session
 
 from py_reportit.shared.config.container import Container
 from py_reportit.shared.config import config
@@ -44,9 +45,13 @@ tags_metadata = [
     },
 ]
 
-def reset_session(request: Request):
-    yield
-    request.app.container.session.shutdown()
+def get_session(request: Request):
+    sessionmaker = request.app.container.sessionmaker()
+    session = sessionmaker()
+    try:
+        yield session
+    finally:
+        session.close()
 
 app = FastAPI(
     title="Report-It Unchained API",
@@ -63,7 +68,6 @@ app = FastAPI(
     #    "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
     #},
     openapi_tags=tags_metadata,
-    dependencies=[Depends(reset_session)]
 )
 
 class ReportState(str, Enum):
@@ -91,13 +95,16 @@ def get_reports(
     neighbourhood: Optional[str] = Query(None, description="The neighbourhood to search for."),
     postcode: Optional[int] = Query(None, description="The postcode to search for."),
     search_text: Optional[str] = Query(None, description="Only reports matching the given search text in their title or description will be returned."),
-    report_repository: ReportRepository = Depends(Provide[Container.report_repository])
+    report_repository_provider: Provider = Depends(Provide[Container.report_repository.provider]),
+    session: Session = Depends(get_session)
 ):
     """
     Make queries for paginated and filtered reports.
     \f
     :param page: The page to retrieve for the paginated query..
     """
+    report_repository: ReportRepository = report_repository_provider(session=session)
+
     boxed_page_size = max(1, min(100, page_size))
 
     and_q = []
@@ -151,21 +158,30 @@ def get_reports(
 
 @app.get("/reports/all", response_model=List[Report], tags=["reports"])
 @inject
-def get_reports(report_repository: ReportRepository = Depends(Provide[Container.report_repository])):
+def get_reports(
+    report_repository_provider: Provider = Depends(Provide[Container.report_repository.provider]),
+    session: Session = Depends(get_session)
+):
     """
     Retrieve all reports in the system, basically a database dump.
     **Using this endpoint is strongly discouraged.** Please consider using the paginated and filtered endpoint instead!
     """
+    report_repository: ReportRepository = report_repository_provider(session=session)
     return report_repository.get_all()
 
 @app.get("/reports/{reportId}", response_model=Report, tags=["reports"])
 @inject
-def get_report(reportId: int = Path(None, description="The ID of the report to retrieve"), report_repository: ReportRepository = Depends(Provide[Container.report_repository])):
+def get_report(
+    reportId: int = Path(None, description="The ID of the report to retrieve"),
+    report_repository_provider: Provider = Depends(Provide[Container.report_repository.provider]),
+    session: Session = Depends(get_session)
+):
     """
     Retrieve the report related to a given ID.
     \f
     :param reportId: The report ID
     """
+    report_repository: ReportRepository = report_repository_provider(session=session)
     report = report_repository.get_by_id(reportId)
     if report is None:
         raise HTTPException(status_code=404, detail=f"Report with id {reportId} does not exist")

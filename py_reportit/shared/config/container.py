@@ -29,6 +29,8 @@ class Container(containers.DeclarativeContainer):
         log_level=config.LOG_LEVEL
     )
 
+    sessionmaker = providers.Singleton(db.provided.sqlalchemy_sessionmaker)
+
     session = providers.Resource(get_session, database=db)
 
     # Repositories
