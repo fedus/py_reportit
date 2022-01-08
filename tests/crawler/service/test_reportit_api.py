@@ -59,7 +59,7 @@ def container() -> Container:
 def test_get_reports(monkeypatch, container: Container):
     requests_mock = SimpleNamespace(json=lambda: { "reports": MOCK_REPORTS })
     monkeypatch.setattr(requests, "get", lambda url: requests_mock)
-    
+
     reportit_service = container.reportit_service()
 
     reports = reportit_service.get_reports()

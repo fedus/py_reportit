@@ -7,7 +7,6 @@ from sqlalchemy.sql.elements import and_
 
 from py_reportit.crawler.post_processors.abstract_pp import PostProcessor
 from py_reportit.shared.model.report import Report
-from py_reportit.shared.model.crawl_result import CrawlResult
 from py_reportit.shared.model.meta import Meta
 from py_reportit.shared.model.meta_tweet import MetaTweet
 from py_reportit.shared.model.report_answer import ReportAnswer
@@ -55,15 +54,6 @@ class Twitter(PostProcessor):
                     else:
                         logger.debug("Sleeping for %d seconds", delay)
                         sleep(delay)
-        if bool(int(self.config.get("TWITTER_POST_CRAWL_RESULTS"))):
-            last_crawl_result = self.crawl_result_repository.get_most_recent()
-            if last_crawl_result and last_crawl_result.successful and (last_crawl_result.added or last_crawl_result.removed or last_crawl_result.marked_done):
-                try:
-                    self.tweet_crawl_result(last_crawl_result)
-                except KeyboardInterrupt:
-                    raise
-                except:
-                    logger.error("Unexpected error:", sys.exc_info()[0])
 
     def process_answers(self):
         if bool(int(self.config.get("TWITTER_POST_ANSWERS"))):
@@ -117,17 +107,6 @@ class Twitter(PostProcessor):
         report.meta.tweeted = True
         report.meta.tweet_ids = tweet_metas
         self.report_repository.session.commit()
-
-    def tweet_crawl_result(self, crawl_result: CrawlResult) -> None:
-        parts = ["Report-It website update:\n"]
-        if crawl_result.added:
-            parts.append(f"{crawl_result.added} new reports have been published")
-        if crawl_result.removed:
-            parts.append(f"{crawl_result.removed} reports have been removed")
-        if crawl_result.marked_done:
-            parts.append(f"{crawl_result.marked_done} reports have been marked as done")
-        reportit_update = "\n".join(parts)
-        self.tweet_service.tweet_thread(reportit_update)
 
     def tweet_answer(self, report: Report, answer: ReportAnswer) -> None:
         last_tweet_id = get_last_tweet_id(report)

@@ -6,7 +6,6 @@ from py_reportit.shared.config.db import Database, get_session
 from py_reportit.shared.repository.report import ReportRepository
 from py_reportit.shared.repository.meta import MetaRepository
 from py_reportit.shared.repository.report_answer import ReportAnswerRepository
-from py_reportit.shared.repository.crawl_result import CrawlResultRepository
 from py_reportit.crawler.service.crawler import CrawlerService
 from py_reportit.crawler.service.reportit_api import ReportItService
 from py_reportit.crawler.service.geocoder import GeocoderService
@@ -37,7 +36,6 @@ class Container(containers.DeclarativeContainer):
     report_repository = providers.Factory(ReportRepository, session=session)
     meta_repository = providers.Factory(MetaRepository, session=session)
     report_answer_repository = providers.Factory(ReportAnswerRepository, session=session)
-    crawl_result_repository = providers.Factory(CrawlResultRepository, session=session)
 
     # Services
     reportit_service = providers.Factory(ReportItService, config=config)
@@ -52,7 +50,6 @@ class Container(containers.DeclarativeContainer):
         report_repository,
         meta_repository,
         report_answer_repository,
-        crawl_result_repository
     ):
         return [providers.Factory(
             pp,
@@ -62,7 +59,6 @@ class Container(containers.DeclarativeContainer):
             report_repository=report_repository,
             meta_repository=meta_repository,
             report_answer_repository=report_answer_repository,
-            crawl_result_repository=crawl_result_repository
         ) for pp in post_processors]
 
     # PostProcessors
@@ -76,7 +72,6 @@ class Container(containers.DeclarativeContainer):
                 report_repository=report_repository,
                 meta_repository=meta_repository,
                 report_answer_repository=report_answer_repository,
-                crawl_result_repository=crawl_result_repository
             )
         ),
     )
@@ -90,7 +85,6 @@ class Container(containers.DeclarativeContainer):
         report_repository=report_repository,
         meta_repository=meta_repository,
         report_answer_repository=report_answer_repository,
-        crawl_result_repository=crawl_result_repository
     )
 
     crawler_service = providers.Factory(
@@ -101,7 +95,6 @@ class Container(containers.DeclarativeContainer):
         report_repository=report_repository,
         meta_repository=meta_repository,
         report_answer_repository=report_answer_repository,
-        crawl_result_repository=crawl_result_repository
     )
 
 def run_with_container(config: dict, callable: Callable, modules: list[str] = ["__main__"]) -> None:

@@ -29,7 +29,7 @@ class ReportItService:
                 lambda rawReport: Report(**{**rawReport,
                                          "created_at": datetime.strptime(rawReport['created_at'], self.DATE_FORMAT_API),
                                          "updated_at": datetime.strptime(rawReport['updated_at'], self.DATE_FORMAT_API)},
-                                        meta=Meta(is_online=True)),
+                                        meta=Meta()),
                 r.json().get('reports')
             )
         )
@@ -47,6 +47,10 @@ class ReportItService:
                 sleep(float(self.config.get("FETCH_REPORTS_BULK_DELAY_SECONDS")))
             except ReportNotFoundException:
                 logger.debug(f"No report found with id {reportId}, skipping.")
+            except requests.exceptions.Timeout:
+                logger.warn(f"Retrieval of report with id {reportId} timed out after {self.config('FETCH_REPORTS_TIMEOUT_SECONDS')} seconds, skipping")
+            except:
+                logger.error(f"Error while trying to fetch report with id {reportId}, skipping", exc_info=True)
 
         return reports
 
@@ -98,7 +102,7 @@ class ReportItService:
             report_properties["photo_url"] = f"https://reportit.vdl.lu/photo/{reportId}.jpg"
             report_properties["thumbnail_url"] = f"https://reportit.vdl.lu/thumbnail/{reportId}.jpg"
 
-        report = Report(**report_properties, meta=Meta(is_online=False))
+        report = Report(**report_properties, meta=Meta())
         answers = self.get_answers(reportId, pre_fetched_page=r)
         report.answers = answers
 
@@ -126,7 +130,7 @@ class ReportItService:
         return [ReportAnswer(**message_dict, order=order, report_id=reportId, meta=ReportAnswerMeta()) for order, message_dict in enumerate(message_dicts)]
 
     def fetch_report_page(self, reportId: int) -> Response:
-        return requests.post(self.config.get("REPORTIT_API_ANSWER_URL"), {"search_id": reportId})
+        return requests.post(self.config.get("REPORTIT_API_ANSWER_URL"), {"search_id": reportId}, timeout=int(self.config.get("FETCH_REPORTS_TIMEOUT_SECONDS")))
 
     @staticmethod
     def extract_from_message_block(block: ResultSet) -> dict:
