@@ -106,7 +106,7 @@ class ReportItService:
         report_properties["description"] = description_regex.group(1).strip() if description_regex else None
 
         # Get status
-        status_regex = re.search(r".*label\slabel-success.*", r.text)
+        status_regex = re.search(r".*badge\sbg-success.*", r.text)
         report_properties["status"] = "finished" if status_regex else "accepted"
 
         # Get created datetime
