@@ -83,7 +83,6 @@ class CrawlerService:
         try:
             logger.info(f"Fetching {len(relevant_combined_ids)} reports, of which {len(relevant_combined_ids) - len(lookahead_ids)} existing reports")
 
-            # TODO: Make sure photo_downloaded is propertly persisted in meta
             reports = self.api_service.get_bulk_reports(relevant_combined_ids, crawl_stop_condition, self.photo_service.process_base64_photo_if_not_downloaded_yet)
 
             logger.info(f"{len(reports)} reports fetched")

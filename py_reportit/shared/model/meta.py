@@ -15,8 +15,6 @@ class Meta(Base):
     report_id = Column(Integer, ForeignKey('report.id'), nullable=False)
     do_tweet = Column(Boolean, default=True, server_default=text('true'), nullable=False)
     tweeted = Column(Boolean, default=False, server_default=text('false'), nullable=False)
-    photo_downloaded = Column(Boolean, default=False, server_default=text('false'), nullable=False)
-    thumb_downloaded = Column(Boolean, default=False, server_default=text('false'), nullable=False)
     closed_without_answer = Column(Boolean, default=False, server_default=text('false'), nullable=False)
     tweet_ids = relationship('MetaTweet', uselist=True)
     address_polled = Column(Boolean, default=False, server_default=text('false'), nullable=False)

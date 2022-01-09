@@ -141,7 +141,6 @@ class ReportItService:
         if report_properties["has_photo"] and photo_callback:
             base64photo = gps_and_image_urls_selection[1]["src"].split("base64,")[1]
             photo_callback(report, base64photo)
-            report.meta.photo_downloaded = True
 
         return report
 

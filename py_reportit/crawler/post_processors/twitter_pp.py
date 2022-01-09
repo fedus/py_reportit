@@ -88,7 +88,7 @@ class Twitter(PostProcessor):
                             sleep(delay)
 
     def tweet_report(self, report: Report) -> None:
-        logger.info("Tweeting %s", report)
+        logger.info(f"Tweeting report {report.id}")
         media_filename = f"{self.config.get('PHOTO_DOWNLOAD_FOLDER')}/{report.id}.jpg" if report.has_photo else None
         title = f"{report.title}\n" if report.has_title else ""
         text = f"📩 {report.created_at.strftime('%Y-%m-%d')}\n{title}\n{report.description}"

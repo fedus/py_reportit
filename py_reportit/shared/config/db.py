@@ -9,9 +9,9 @@ logger = logging.getLogger(f"py_reportit.{__name__}")
 
 class Database:
 
-    def __init__(self, log_level, **kwargs):
+    def __init__(self, log_db, **kwargs):
         self.db_url = self.get_db_url(**kwargs)
-        self.engine = create_engine(self.db_url, pool_recycle=400, echo=log_level == "DEBUG", future=True)
+        self.engine = create_engine(self.db_url, pool_recycle=400, echo=int(log_db), future=True)
         self.sqlalchemy_sessionmaker = sqlalchemy_sessionmaker(self.engine)
 
     @staticmethod

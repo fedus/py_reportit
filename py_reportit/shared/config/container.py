@@ -26,7 +26,7 @@ class Container(containers.DeclarativeContainer):
         db_host=config.DB_HOST,
         db_port=config.DB_PORT,
         db_database=config.DB_DATABASE,
-        log_level=config.LOG_LEVEL
+        log_db=config.LOG_DB
     )
 
     sessionmaker = providers.Singleton(db.provided.sqlalchemy_sessionmaker)

@@ -39,7 +39,7 @@ class Geocode(PostProcessor):
                 sleep(delay)
 
     def process_report(self, report: Report):
-        logger.info("Processing %s", report)
+        logger.info(f"Processing report {report.id}")
 
         try:
             geocode_results = self.geocoder_service.get_neighbourhood_and_street(report.latitude, report.longitude)
