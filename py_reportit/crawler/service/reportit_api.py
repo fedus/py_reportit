@@ -94,13 +94,13 @@ class ReportItService:
         report_properties = { "id": reportId }
 
         # Get title
-        header_selection = soup.select(".panel-heading b")
+        header_selection = soup.select(".card-header b")
         raw_header = header_selection[0].text.strip() if len(header_selection) else ""
         title_regex = re.search(r"(?<=\d\s:).*", raw_header)
         report_properties["title"] = title_regex.group().strip() if title_regex else None
 
         # Get description
-        description_selection = soup.select(".panel-body .row .panel-default .panel-body")
+        description_selection = soup.select(".card-body .row .card .card-body")
         raw_description = description_selection[0].text.strip() if len(description_selection) else ""
         description_regex = re.search(r"Description\s:\n(.*)", raw_description, re.DOTALL)
         report_properties["description"] = description_regex.group(1).strip() if description_regex else None
@@ -153,7 +153,7 @@ class ReportItService:
         for br in soup.find_all("br"):
             br.replace_with("\n")
 
-        message_blocks = soup.select(".panel-body .row:nth-child(2) .panel.panel-default")
+        message_blocks = soup.select(".card-body .row:nth-child(2) .card")
         message_dicts = map(self.extract_from_message_block, message_blocks)
 
         return [ReportAnswer(**message_dict, order=order, report_id=reportId, meta=ReportAnswerMeta()) for order, message_dict in enumerate(message_dicts)]
@@ -163,12 +163,12 @@ class ReportItService:
 
     @staticmethod
     def extract_from_message_block(block: ResultSet) -> dict:
-        author = block.select(".panel-heading i")[0].text.strip()
-        raw_header = block.select(".panel-heading")[0].text.strip()
+        author = block.select(".card-header i")[0].text.strip()
+        raw_header = block.select(".card-header")[0].text.strip()
         raw_timestamp = re.search(r"(\d{2}\.\d{2}\.\d{4} \d{2}:\d{2})", raw_header).group()
         created_at = datetime.strptime(raw_timestamp, '%d.%m.%Y %H:%M')
         closing = raw_header.split()[0].lower() == "closed"
-        raw_text = block.select(".panel-body")
+        raw_text = block.select(".card-body")
         text = raw_text[0].text.strip() if len(raw_text) else ""
 
         return {

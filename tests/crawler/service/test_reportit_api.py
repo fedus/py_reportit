@@ -85,12 +85,12 @@ REPORT_FINISHED_WITHOUT_PHOTO_WITH_ANSWER = """
 	<body>
 		<div class="container">
 			<div class="panel panel-primary">
-									<div class="panel-heading"><b>Incident <span class="badge">392</span> : Title ABCD</b></div>
-						<div class="panel-body">
+									<div class="card-header"><b>Incident <span class="badge">392</span> : Title ABCD</b></div>
+						<div class="card-body">
 							<div class="row">
 								<div class="col-xs-12 col-md-6">
-									<div class="panel panel-default">
-										<div class="panel-body">
+									<div class="panel card">
+										<div class="card-body">
 											<b>Description :</b><br>Very nice description.										</div>
 									</div>
 									<table class="table">
@@ -110,10 +110,10 @@ REPORT_FINISHED_WITHOUT_PHOTO_WITH_ANSWER = """
 																	</div>
 								<div class="col-xs-12 col-md-6">
 									<br>
-									<p><b>Comments: </b></p>												<div class="panel panel-default">
-													<div class="panel-heading">
+									<p><b>Comments: </b></p>												<div class="panel card">
+													<div class="card-header">
 														Closed by <i>Service Party</i> on 15.03.2013 13:53													</div>
-																													<div class="panel-body">
+																													<div class="card-body">
 																	Ceci n'est pas une pipe															</div>
 																											</div>
 																				</div>
@@ -164,12 +164,12 @@ REPORT_FINISHED_WITH_PHOTO_WITH_ANSWERS = """
 	<body>
 		<div class="container">
 			<div class="panel panel-primary">
-									<div class="panel-heading"><b>Incident <span class="badge">499</span> : En Titel mat Ümläut</b></div>
-						<div class="panel-body">
+									<div class="card-header"><b>Incident <span class="badge">499</span> : En Titel mat Ümläut</b></div>
+						<div class="card-body">
 							<div class="row">
 								<div class="col-xs-12 col-md-6">
-									<div class="panel panel-default">
-										<div class="panel-body">
+									<div class="panel card">
+										<div class="card-body">
 											<b>Description :</b><br>										</div>
 									</div>
 									<table class="table">
@@ -189,20 +189,20 @@ REPORT_FINISHED_WITH_PHOTO_WITH_ANSWERS = """
 								<p><img alt="" src="binary-image-data" class="img-thumbnail" /></p>								</div>
 								<div class="col-xs-12 col-md-6">
 									<br>
-									<p><b>Comments: </b></p>												<div class="panel panel-default">
-													<div class="panel-heading">
+									<p><b>Comments: </b></p>												<div class="panel card">
+													<div class="card-header">
 														Submitted by <i>Service Party</i> on 01.07.2013 08:35													</div>
-																													<div class="panel-body">
+																													<div class="card-body">
 																	Daat ass fier de Service Fête.Mir hun daat viruginn.																</div>
 																											</div>
-																								<div class="panel panel-default">
-													<div class="panel-heading">
+																								<div class="panel card">
+													<div class="card-header">
 														Submitted by <i>Service Fête</i> on 04.07.2013 12:18													</div>
-																													<div class="panel-body">
+																													<div class="card-body">
 																	D'Avenue Monterey ass eng Staatsstrooss. An dësem Fall ass de Service Fiesta zoustänneg. 																</div>
 																											</div>
-																								<div class="panel panel-default">
-													<div class="panel-heading">
+																								<div class="panel card">
+													<div class="card-header">
 														Closed by <i>Service Fiesta</i> on 04.07.2013 12:19													</div>
 																									</div>
 																				</div>

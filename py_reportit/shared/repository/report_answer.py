@@ -15,3 +15,7 @@ class ReportAnswerRepository(AbstractRepository[ReportAnswer]):
         )
         self.session.commit()
         return result.rowcount
+
+    def create(self, entity: ReportAnswer) -> None:
+        self.session.add(ReportAnswer(**{column: getattr(entity, column) for column in ReportAnswer.__table__.columns.keys() if column != "id"}))
+        self.session.commit()
