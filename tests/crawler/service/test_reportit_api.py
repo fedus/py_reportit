@@ -95,7 +95,7 @@ REPORT_FINISHED_WITHOUT_PHOTO_WITH_ANSWER = """
 									</div>
 									<table class="table">
 										<tbody>
-											<tr><th scope="row">Status :</th><td><span class="label label-success">Closed</span></td></tr>
+											<tr><th scope="row">Status :</th><td><span class="badge bg-success">Closed</span></td></tr>
 																						<tr><th scope="row">Sent on :</th><td>13.03.2013 18:24</td></tr>
 										</tbody>
 									</table>
@@ -174,7 +174,7 @@ REPORT_FINISHED_WITH_PHOTO_WITH_ANSWERS = """
 									</div>
 									<table class="table">
 										<tbody>
-											<tr><th scope="row">Status :</th><td><span class="label label-success">Closed</span></td></tr>
+											<tr><th scope="row">Status :</th><td><span class="badge bg-success">Closed</span></td></tr>
 																						<tr><th scope="row">Sent on :</th><td>28.06.2013 12:03</td></tr>
 										</tbody>
 									</table>
