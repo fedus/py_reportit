@@ -31,7 +31,7 @@ If you do download the whole database, be warned that it may take some time to p
 
 ### Photos
 
-The photo endpoint allows you to download the photo relating to a given report ID. Nonetheless, we strongly encourage you to download photos from the city's website instead (basically, use the url provided in the `photo_url` property).
+The photo endpoint allows you to download the photo relating to a given report ID.
 """
 
 tags_metadata = [
@@ -116,9 +116,9 @@ def get_reports(
         and_q.append(report.Report.status=="finished")
 
     if photo == PhotoState.WITH_PHOTO:
-        and_q.append(report.Report.photo_url!=None)
+        and_q.append(report.Report.has_photo==True)
     elif photo == PhotoState.WITHOUT_PHOTO:
-        and_q.append(report.Report.photo_url==None)
+        and_q.append(report.Report.has_photo==False)
 
     if after:
         and_q.append(report.Report.created_at>=after)

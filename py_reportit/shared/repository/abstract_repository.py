@@ -101,3 +101,11 @@ class AbstractRepository(ABC, Generic[Model]):
 
     def get_ids_by(self, *where_clauses) -> list[int]:
         return self.session.execute(select(self.model.id).where(*where_clauses)).scalars().all()
+
+    def get_latest(self, amount: int) -> list[Model]:
+        entities = self.session.execute(select(self.model).order_by(self.model.id.desc()).limit(amount)).scalars().all()
+
+        if entities:
+            return sorted(entities, key=lambda entity: entity.id)
+
+        return entities

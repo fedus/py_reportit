@@ -53,6 +53,7 @@ sqlakeyset==1.0.1629029818
 SQLAlchemy==1.4.29
 starlette==0.16.0
 toml==0.10.2
+toolz==0.11.2
 tweepy==3.10.0
 typing-extensions==3.10.0.2
 ujson==4.1.0

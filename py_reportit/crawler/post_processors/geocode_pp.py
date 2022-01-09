@@ -33,13 +33,13 @@ class Geocode(PostProcessor):
             except KeyboardInterrupt:
                 raise
             except:
-                logger.error("Unexpected error:", sys.exc_info()[0])
+                logger.error(f"Unexpected error while processing report {report}", exc_info=True)
             finally:
                 logger.debug("Sleeping for %d seconds", delay)
                 sleep(delay)
 
     def process_report(self, report: Report):
-        logger.info("Processing %s", report)
+        logger.info(f"Processing report {report.id}")
 
         try:
             geocode_results = self.geocoder_service.get_neighbourhood_and_street(report.latitude, report.longitude)

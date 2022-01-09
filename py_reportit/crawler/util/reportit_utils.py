@@ -13,9 +13,17 @@ from py_reportit.shared.model.report import Report
 def extract_ids(reports: list[Report]) -> list[int]:
     return list(map(lambda report: report.id, reports))
 
-def get_lowest_and_highest_ids(reports: list[Report]) -> tuple[int]:
-    ids = extract_ids(reports)
-    return (min(ids), max(ids))
+def filter_reports_by_state(reports: list[Report], finished: bool) -> list[Report]:
+    return list(filter(lambda report: report.status == 'finished' if finished else 'accepted', reports))
+
+def truncate_float(f: float, decimals: int) -> float:
+    return int(f*10**decimals)/10**decimals
+
+def reports_are_roughly_equal_by_position(r1: Report, r2: Report, decimals: int) -> bool:
+    lats_are_equal = truncate_float(float(r1.latitude), decimals) == truncate_float(float(r2.latitude), decimals)
+    lons_are_equal = truncate_float(float(r1.longitude), decimals) == truncate_float(float(r2.longitude), decimals)
+
+    return lats_are_equal and lons_are_equal
 
 def get_last_tweet_id(report: Report) -> str:
     if report.answers and len(report.answers):

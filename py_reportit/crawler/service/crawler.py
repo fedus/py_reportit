@@ -1,17 +1,14 @@
 import logging, sys
 
-from datetime import datetime
-
-from py_reportit.shared.model.crawl_result import CrawlResult
+from datetime import datetime, timedelta
 from py_reportit.shared.model.report import Report
-from py_reportit.shared.model.meta import Meta
 from py_reportit.crawler.post_processors.abstract_pp import PostProcessorDispatcher
 from py_reportit.shared.repository.report import ReportRepository
 from py_reportit.shared.repository.meta import MetaRepository
-from py_reportit.shared.repository.crawl_result import CrawlResultRepository
 from py_reportit.shared.repository.report_answer import ReportAnswerRepository
 from py_reportit.crawler.service.reportit_api import ReportItService
-from py_reportit.crawler.util.reportit_utils import extract_ids, get_lowest_and_highest_ids
+from py_reportit.crawler.service.photo import PhotoService
+from py_reportit.crawler.util.reportit_utils import extract_ids, filter_reports_by_state, reports_are_roughly_equal_by_position
 
 logger = logging.getLogger(f"py_reportit.{__name__}")
 
@@ -22,33 +19,21 @@ class CrawlerService:
                  config: dict,
                  post_processor_dispatcher: PostProcessorDispatcher,
                  api_service: ReportItService,
+                 photo_service: PhotoService,
                  report_repository: ReportRepository,
                  meta_repository: MetaRepository,
                  report_answer_repository: ReportAnswerRepository,
-                 crawl_result_repository: CrawlResultRepository,
                  ):
         self.config = config
         self.post_processors = post_processor_dispatcher.post_processors
         self.report_repository = report_repository
         self.meta_repository = meta_repository
         self.report_answer_repository = report_answer_repository
-        self.crawl_result_repository = crawl_result_repository
         self.api_service = api_service
-
-    def get_online_reports_count(self) -> int:
-        return self.meta_repository.count_by(Meta.is_online==True)
-
-    def get_offline_reports_count(self) -> int:
-        return self.meta_repository.count_by(Meta.is_online==False)
+        self.photo_service = photo_service
 
     def get_finished_reports_count(self) -> int:
         return self.report_repository.count_by(Report.status=="finished")
-
-    def get_report_ids_since_crawl(self, crawl: CrawlResult) -> list[int]:
-        return self.report_repository.get_ids_by(Report.id >= crawl.lowest_id)
-
-    def get_reports_since_crawl(self, crawl: CrawlResult) -> list[Report]:
-        return self.report_repository.get_by(Report.id >= crawl.lowest_id)
 
     @staticmethod
     def filter_updated_reports(existing_reports: list[Report], new_reports: list[Report]) -> list[Report]:
@@ -61,63 +46,61 @@ class CrawlerService:
         removed_count = len(list(set(pre_crawl_ids) - set(crawled_ids)))
         return (added_count, removed_count)
 
+    def get_recent_reports(self) -> list[Report]:
+        recent_reports = self.report_repository.get_by(Report.created_at > datetime.today() - timedelta(days=int(self.config.get("FETCH_REPORTS_OF_LAST_DAYS"))))
+
+        if not recent_reports:
+            recent_reports = self.report_repository.get_latest(int(self.config.get("FETCH_REPORTS_FALLBACK_AMOUNT")))
+
+        if not recent_reports:
+            recent_reports = []
+
+        return recent_reports
+
     def crawl(self):
-        logger.info("Fetching last crawl result")
-
-        pre_crawl_finished_reports_count = self.get_finished_reports_count()
-
-        logger.info("Fetching most recent successful crawl")
-        last_successful_crawl = self.crawl_result_repository.get_most_recent_successful_crawl()
-
-        pre_crawl_reports = []
-        pre_crawl_ids = []
         new_or_updated_reports = []
 
-        if last_successful_crawl:
-            logger.info("Found most recent successful crawl, fetching reports of last crawl")
-            pre_crawl_reports = self.get_reports_since_crawl(last_successful_crawl)
-            pre_crawl_ids = extract_ids(pre_crawl_reports)
+        logger.info("Fetching recent reports from database")
+        recent_reports = self.get_recent_reports()
+
+        if recent_reports:
+            recent_ids = extract_ids(recent_reports)
+            closed_recent_report_ids = extract_ids(filter_reports_by_state(recent_reports, True))
+            logger.info(f"{len(recent_ids)} recent reports fetched, of which {len(closed_recent_report_ids)} are already closed")
+        else:
+            fallback_id = int(self.config.get("FETCH_REPORTS_FALLBACK_START_ID"))
+            recent_ids = [fallback_id]
+            logger.info(f"No recent reports found in database, beginning crawl from fallback id {fallback_id}")
+
+        lookahead_ids = list(range(recent_ids[-1] + 1, recent_ids[-1] + 1 + int(self.config.get("FETCH_REPORTS_LOOKAHEAD_AMOUNT"))))
+        all_combined_ids = recent_ids + lookahead_ids
+        relevant_combined_ids = [report_id for report_id in all_combined_ids if report_id not in closed_recent_report_ids]
+
+        latest_truncated_report = self.api_service.get_latest_truncated_report()
+
+        crawl_stop_condition = lambda current_report: reports_are_roughly_equal_by_position(current_report, latest_truncated_report, 5)
 
         try:
-            logger.info("Fetching reports")
-            reports = self.api_service.get_reports()
+            logger.info(f"Fetching {len(relevant_combined_ids)} reports, of which {len(relevant_combined_ids) - len(lookahead_ids)} existing reports")
+
+            reports = self.api_service.get_bulk_reports(relevant_combined_ids, crawl_stop_condition, self.photo_service.process_base64_photo_if_not_downloaded_yet)
 
             logger.info(f"{len(reports)} reports fetched")
-            new_or_updated_reports = self.filter_updated_reports(pre_crawl_reports, reports)
+            new_or_updated_reports = self.filter_updated_reports(recent_reports, reports)
+
             self.report_repository.update_or_create_all(reports)
-            self.meta_repository.update_many({"is_online": False}, Meta.report_id.notin_(extract_ids(reports)), Meta.is_online == True)
+
+            for report in reports:
+                self.report_answer_repository.update_or_create_all(report.answers)
+
         except KeyboardInterrupt:
             raise
+
         except:
             logger.error("Unexpected error during crawl: ", sys.exc_info()[0])
-            self.crawl_result_repository.create(CrawlResult(
-                timestamp=datetime.now(),
-                successful=False,
-            ))
             return
 
         logger.info("%d new or modified reports found", len(new_or_updated_reports))
-
-        post_crawl_finished_reports_count = self.get_finished_reports_count()
-
-        added_reports_count, removed_reports_count = self.get_new_and_deleted_report_count(pre_crawl_ids, extract_ids(reports))
-        marked_done_count = post_crawl_finished_reports_count - pre_crawl_finished_reports_count
-
-        lowest_id, highest_id = get_lowest_and_highest_ids(reports)
-
-        crawl_result = CrawlResult(
-            timestamp=datetime.now(),
-            successful=True,
-            total=len(reports),
-            added=added_reports_count,
-            removed=removed_reports_count,
-            marked_done=marked_done_count,
-            highest_id=highest_id,
-            lowest_id=lowest_id,
-        )
-
-        logger.info(f"Saving successful crawl result {crawl_result}")
-        self.crawl_result_repository.create(crawl_result)
 
         logger.info("Running post processors")
         for pp in self.post_processors:
