@@ -37,7 +37,7 @@ class ReportAnswerMeta(Base):
     def closing_type(self) -> ClosingType:
         if not self.answer.closing:
             return ClosingType.NOT_CLOSED
-        
+
         return ClosingType.PARTIALLY_CLOSED if text_indicates_partial_closure(self.answer.text) else ClosingType.CLOSED
 
     def __repr__(self):

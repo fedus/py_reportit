@@ -2,6 +2,7 @@ from sqlalchemy import update
 
 from py_reportit.shared.repository.abstract_repository import AbstractRepository
 from py_reportit.shared.model.report_answer import ReportAnswer
+from py_reportit.shared.model.answer_meta import ReportAnswerMeta
 
 class ReportAnswerRepository(AbstractRepository[ReportAnswer]):
 
@@ -17,5 +18,5 @@ class ReportAnswerRepository(AbstractRepository[ReportAnswer]):
         return result.rowcount
 
     def create(self, entity: ReportAnswer) -> None:
-        self.session.add(ReportAnswer(**{column: getattr(entity, column) for column in ReportAnswer.__table__.columns.keys() if column != "id"}))
+        self.session.add(ReportAnswer(meta=ReportAnswerMeta(), **{column: getattr(entity, column) for column in ReportAnswer.__table__.columns.keys() if column != "id"}))
         self.session.commit()

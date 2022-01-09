@@ -253,7 +253,7 @@ def test_get_report_with_answers__finished_with_photo_with_answers(monkeypatch, 
 
     answer3: ReportAnswer = report.answers[2]
 
-    assert answer3.created_at == datetime(2013, 7, 4, 12, 19)	
+    assert answer3.created_at == datetime(2013, 7, 4, 12, 19)
     assert answer3.author == "Service Fiesta"
     assert answer3.text == ""
     assert answer3.closing == True
