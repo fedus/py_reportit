@@ -54,6 +54,8 @@ class Twitter(PostProcessor):
                     else:
                         logger.debug("Sleeping for %d seconds", delay)
                         sleep(delay)
+        else:
+            logger.info("Skipping posting new reports to Twitter ...")
 
     def process_answers(self):
         if bool(int(self.config.get("TWITTER_POST_ANSWERS"))):
@@ -86,6 +88,8 @@ class Twitter(PostProcessor):
                         else:
                             logger.debug("Sleeping for %d seconds", delay)
                             sleep(delay)
+        else:
+            logger.info("Skipping posting new answers to Twitter ...")
 
     def tweet_report(self, report: Report) -> None:
         logger.info(f"Tweeting report {report.id}")
