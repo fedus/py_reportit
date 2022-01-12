@@ -1,12 +1,13 @@
 import requests, re, logging, json
 
-from typing import Callable
+from typing import Callable, Optional
 from base64 import b64decode
 from bs4.element import ResultSet
 from bs4 import BeautifulSoup
 from datetime import datetime
-from requests.models import Response
 from time import sleep
+from requests.models import Response
+from requests.sessions import Session
 from toolz.dicttoolz import dissoc
 
 from py_reportit.shared.model import *
@@ -22,11 +23,14 @@ class ReportItService:
     DATE_FORMAT_API = '%Y-%m-%d %H:%M:%S'
     DATE_FORMAT_WEB = '%d.%m.%Y %H:%M'
 
-    def __init__(self, config):
+    def __init__(self, config: dict, requests_session: Session):
         self.config = config
+        self.requests_session = requests_session
 
     def get_latest_truncated_report(self) -> Report:
-        r = requests.get(self.config.get('REPORTIT_API_URL'))
+        r = self.requests_session.get(self.config.get('REPORTIT_API_URL'))
+
+        r.raise_for_status()
 
         reports_string_raw = b64decode(re.search(self.config.get('REPORTIT_API_REPORTS_REGEX'), r.text).group(1))
         reports_string_escaped = reports_string_raw.decode('raw_unicode_escape')
@@ -36,7 +40,7 @@ class ReportItService:
         return Report(**dissoc(most_recent_report, "thumbnail_url"))
 
     def get_reports(self) -> list[Report]:
-        r = requests.get(self.config.get('REPORTIT_API_URL'))
+        r = self.requests_session.get(self.config.get('REPORTIT_API_URL'))
         unsorted_reports = list(
             map(
                 lambda rawReport: Report(**{**rawReport,
@@ -51,8 +55,8 @@ class ReportItService:
     def get_bulk_reports(
         self,
         reportIds: list[int],
-        stop_condition: Callable[[Report], bool],
-        photo_callback: Callable[[Report, str], None] = None
+        stop_condition: Optional[Callable[[Report], bool]] = None,
+        photo_callback: Optional[Callable[[Report, str], None]] = None
     ) -> list[Report]:
         logger.info(f"Fetching bulk reports, {reportIds[0]} - {reportIds[-1]}")
 
@@ -64,7 +68,7 @@ class ReportItService:
                 fetched_report = self.get_report_with_answers(reportId, photo_callback)
                 reports.append(fetched_report)
 
-                if stop_condition(fetched_report):
+                if stop_condition and stop_condition(fetched_report):
                     logger.info(f"Stop condition hit at report with id {reportId}, stopping bulk crawl")
                     break
 
@@ -80,7 +84,7 @@ class ReportItService:
 
         return reports
 
-    def get_report_with_answers(self, reportId: int, photo_callback: Callable[[Report, str], None] = None) -> Report:
+    def get_report_with_answers(self, reportId: int, photo_callback: Optional[Callable[[Report, str], None]] = None) -> Report:
         r = self.fetch_report_page(reportId)
 
         if r.text.find("Sent on :") < 0:
@@ -159,7 +163,7 @@ class ReportItService:
         return [ReportAnswer(**message_dict, order=order, report_id=reportId, meta=ReportAnswerMeta()) for order, message_dict in enumerate(message_dicts)]
 
     def fetch_report_page(self, reportId: int) -> Response:
-        return requests.post(self.config.get("REPORTIT_API_ANSWER_URL"), {"search_id": reportId}, timeout=int(self.config.get("FETCH_REPORTS_TIMEOUT_SECONDS")))
+        return self.requests_session.post(self.config.get("REPORTIT_API_ANSWER_URL"), {"search_id": reportId}, timeout=int(self.config.get("FETCH_REPORTS_TIMEOUT_SECONDS")))
 
     @staticmethod
     def extract_from_message_block(block: ResultSet) -> dict:

@@ -1,6 +1,7 @@
 import os, sys
-from pathlib import Path
+import requests_random_user_agent
 
+from pathlib import Path
 from dotenv import dotenv_values
 
 is_dev = "--dev" in sys.argv or os.environ.get("ENV", "PROD") == "DEV"

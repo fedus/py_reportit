@@ -28,12 +28,18 @@ class App:
         self.do_shutdown = False
 
     @inject
-    def execute_crawler(self, crawler: CrawlerService = Provide[Container.crawler_service], session_provider: Resource = Provide[Container.session.provider]):
+    def execute_crawler(
+        self,
+        crawler: CrawlerService = Provide[Container.crawler_service],
+        session_provider: Resource = Provide[Container.session.provider],
+        requests_session_provider: Resource = Provide[Container.requests_session.provider],
+    ):
         logger.info(f"Starting crawl at {datetime.now()}")
 
         try:
             crawler.crawl()
             session_provider.shutdown()
+            requests_session_provider.shutdown()
         except KeyboardInterrupt:
             raise
         except:

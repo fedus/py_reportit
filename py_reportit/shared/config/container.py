@@ -3,6 +3,7 @@ from typing import Callable
 from dependency_injector import containers, providers
 
 from py_reportit.shared.config.db import Database, get_session
+from py_reportit.shared.config.requests_session import get_requests_session
 from py_reportit.shared.repository.report import ReportRepository
 from py_reportit.shared.repository.meta import MetaRepository
 from py_reportit.shared.repository.report_answer import ReportAnswerRepository
@@ -33,14 +34,16 @@ class Container(containers.DeclarativeContainer):
 
     session = providers.Resource(get_session, database=db)
 
+    requests_session = providers.Resource(get_requests_session, config=config)
+
     # Repositories
     report_repository = providers.Factory(ReportRepository, session=session)
     meta_repository = providers.Factory(MetaRepository, session=session)
     report_answer_repository = providers.Factory(ReportAnswerRepository, session=session)
 
     # Services
-    reportit_service = providers.Factory(ReportItService, config=config)
-    geocoder_service = providers.Factory(GeocoderService, config=config)
+    reportit_service = providers.Factory(ReportItService, config=config, requests_session=requests_session)
+    geocoder_service = providers.Factory(GeocoderService, config=config, requests_session=requests_session)
     photo_service = providers.Factory(PhotoService, config=config)
 
     # Helper function to work around scope limitations with class variables and list comprehension

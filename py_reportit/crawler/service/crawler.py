@@ -1,6 +1,8 @@
 import logging, sys
 
 from datetime import datetime, timedelta
+from requests.models import HTTPError
+
 from py_reportit.shared.model.report import Report
 from py_reportit.crawler.post_processors.abstract_pp import PostProcessorDispatcher
 from py_reportit.shared.repository.report import ReportRepository
@@ -76,16 +78,20 @@ class CrawlerService:
         all_combined_ids = recent_ids + lookahead_ids
         relevant_combined_ids = [report_id for report_id in all_combined_ids if report_id not in closed_recent_report_ids]
 
-        latest_truncated_report = self.api_service.get_latest_truncated_report()
+        try:
+            latest_truncated_report = self.api_service.get_latest_truncated_report()
 
-        crawl_stop_condition = lambda current_report: reports_are_roughly_equal_by_position(current_report, latest_truncated_report, 5)
+            crawl_stop_condition = lambda current_report: reports_are_roughly_equal_by_position(current_report, latest_truncated_report, 5)
+        except HTTPError as e:
+            logger.warn(f"Encountered error while trying to fetch latest truncated report, not setting stop condition.", exc_info=True)
+            crawl_stop_condition = None
 
         try:
             logger.info(f"Fetching {len(relevant_combined_ids)} reports, of which {len(relevant_combined_ids) - len(lookahead_ids)} existing reports")
 
             reports = self.api_service.get_bulk_reports(relevant_combined_ids, crawl_stop_condition, self.photo_service.process_base64_photo_if_not_downloaded_yet)
 
-            logger.info(f"{len(reports)} reports fetched")
+            logger.info(f"{len(reports)} actual reports fetched")
             new_or_updated_reports = self.filter_updated_reports(recent_reports, reports)
 
             self.report_repository.update_or_create_all(reports)
