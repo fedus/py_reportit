@@ -1,4 +1,3 @@
-import requests
 import pytest
 
 from types import SimpleNamespace

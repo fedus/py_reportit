@@ -2,6 +2,7 @@ import requests
 import pytest
 import logging
 
+from unittest.mock import Mock
 from types import SimpleNamespace
 
 from py_reportit.shared.config.container import Container
@@ -12,21 +13,21 @@ logger = logging.getLogger(__name__)
 def container() -> Container:
     return Container(config=SimpleNamespace(get=lambda config_value: ""))
 
-def build_requests_mock(data: dict) -> SimpleNamespace:
+def build_response_mock(data: dict) -> SimpleNamespace:
     return SimpleNamespace(
         raise_for_status=lambda: None,
         json=lambda: data
     )
 
-def test_get_reports_not_luxembourg(monkeypatch, caplog, container: Container):
-    requests_mock = build_requests_mock({"address": { "country_code": "not_lu" }})
+def test_get_reports_not_luxembourg(caplog, container: Container):
+    r_session_mock = Mock()
+    r_session_mock.get.return_value = build_response_mock({"address": { "country_code": "not_lu" }})
 
-    monkeypatch.setattr(requests, "get", lambda url: requests_mock)
-    
-    geocoder_service = container.geocoder_service()
+    with container.requests_session.override(r_session_mock):
+        geocoder_service = container.geocoder_service()
 
-    with caplog.at_level(logging.WARNING):
-        address_data = geocoder_service.get_neighbourhood_and_street(42.4544, 6.435)
+        with caplog.at_level(logging.WARNING):
+            address_data = geocoder_service.get_neighbourhood_and_street(42.4544, 6.435)
 
     assert "not Luxembourg" in caplog.text
 
@@ -34,8 +35,8 @@ def test_get_reports_not_luxembourg(monkeypatch, caplog, container: Container):
     assert address_data["postcode"] == None
     assert address_data["neighbourhood"] == None
 
-def test_get_reports_in_luxembourg_partial_data(monkeypatch, container: Container):
-    requests_mock = build_requests_mock(
+def test_get_reports_in_luxembourg_partial_data(container: Container):
+    response_mock = build_response_mock(
         {
             "address": {
                 "country_code": "lu",
@@ -45,18 +46,20 @@ def test_get_reports_in_luxembourg_partial_data(monkeypatch, container: Containe
         }
     )
 
-    monkeypatch.setattr(requests, "get", lambda url: requests_mock)
-    
-    geocoder_service = container.geocoder_service()
+    r_session_mock = Mock()
+    r_session_mock.get.return_value = response_mock
 
-    address_data = geocoder_service.get_neighbourhood_and_street(42.4544, 6.435)
+    with container.requests_session.override(r_session_mock):
+        geocoder_service = container.geocoder_service()
+
+        address_data = geocoder_service.get_neighbourhood_and_street(42.4544, 6.435)
 
     assert address_data["street"] == "test road"
     assert address_data["postcode"] == None
     assert address_data["neighbourhood"] == "test suburb"
 
-def test_get_reports_in_luxembourg_full_data(monkeypatch, container: Container):
-    requests_mock = build_requests_mock(
+def test_get_reports_in_luxembourg_full_data(container: Container):
+    response_mock = build_response_mock(
         {
             "address": {
                 "country_code": "lu",
@@ -67,11 +70,13 @@ def test_get_reports_in_luxembourg_full_data(monkeypatch, container: Container):
         }
     )
 
-    monkeypatch.setattr(requests, "get", lambda url: requests_mock)
-    
-    geocoder_service = container.geocoder_service()
+    r_session_mock = Mock()
+    r_session_mock.get.return_value = response_mock
 
-    address_data = geocoder_service.get_neighbourhood_and_street(42.4544, 6.435)
+    with container.requests_session.override(r_session_mock):
+        geocoder_service = container.geocoder_service()
+
+        address_data = geocoder_service.get_neighbourhood_and_street(42.4544, 6.435)
 
     assert address_data["street"] == "test road"
     assert address_data["postcode"] == "1999"
