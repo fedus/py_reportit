@@ -22,7 +22,7 @@ def get_requests_session(config: dict) -> Iterable[Session]:
             })
             proxies = { "http": proxy_url, "https": proxy_url }
             session.proxies.update(proxies)
-
-        logger.info(f"Current User-Agent: {session.headers['User-Agent']}")
+        else:
+            logger.info(f"Current User-Agent: {session.headers['User-Agent']}")
         yield session
     logger.debug("Closing requests session")
