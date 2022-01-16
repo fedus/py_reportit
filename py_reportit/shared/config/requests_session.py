@@ -11,7 +11,7 @@ def get_requests_session(config: dict) -> Iterable[Session]:
     with requests.Session() as session:
         logger.debug("Opening requests-session")
 
-        if config.get("USE_PROXY", False):
+        if int(config.get("USE_PROXY", 0)):
             logger.debug("Setting proxy ...")
             proxy_url = Template(config.get("PROXY_URL")).substitute({
                 "PROXY_SCHEME": config.get("PROXY_SCHEME"),

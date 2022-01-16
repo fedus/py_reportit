@@ -6,16 +6,12 @@ from datetime import datetime
 from dependency_injector.wiring import Provide, inject
 from dependency_injector.providers import Resource
 
-from py_reportit.shared.config.container import Container, run_with_container
+from py_reportit.shared.config.container import Container
 from py_reportit.shared.model import *
 from py_reportit.crawler.service.crawler import CrawlerService
-from py_reportit.shared.config import config
 
-logging.basicConfig(encoding='utf-8')
-logger = logging.getLogger(f"py_reportit")
-logger.setLevel(config.get("LOG_LEVEL"))
+logger = logging.getLogger(f"py_reportit.{__name__}")
 
-logger.info(f"py_reportit started at {datetime.now()}")
 class ShutdownException(Exception):
     pass
 
@@ -71,10 +67,3 @@ class App:
         logger.info(f'Received: {signum}, initiating shutdown')
         self.do_shutdown = True
         raise ShutdownException
-
-if __name__ == "__main__":
-    run_with_container(config, lambda: App().run())
-else:
-    logger.warn("Main module was imported, but is meant to run as standalone")
-
-logger.info("Exiting")

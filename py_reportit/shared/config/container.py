@@ -1,7 +1,6 @@
-from typing import Callable
-
 from dependency_injector import containers, providers
 
+from py_reportit.shared.config import config
 from py_reportit.shared.config.db import Database, get_session
 from py_reportit.shared.config.requests_session import get_requests_session
 from py_reportit.shared.repository.report import ReportRepository
@@ -103,13 +102,11 @@ class Container(containers.DeclarativeContainer):
         report_answer_repository=report_answer_repository,
     )
 
-def run_with_container(config: dict, callable: Callable, modules: list[str] = ["__main__"]) -> None:
+def build_container() -> Container:
     container = Container()
 
     container.config.from_dict(config)
 
-    container.wire(modules=modules)
+    container.wire(modules=["__main__"])
 
-    callable()
-
-    container.shutdown_resources()
+    return container

@@ -1,14 +1,18 @@
 import logging, sys
 
 from datetime import datetime, timedelta
+from time import sleep
+from typing import Callable, Optional
 from requests.models import HTTPError
+from requests.exceptions import RequestException, Timeout
 
+from py_reportit.crawler.tasks import add
 from py_reportit.shared.model.report import Report
 from py_reportit.crawler.post_processors.abstract_pp import PostProcessorDispatcher
 from py_reportit.shared.repository.report import ReportRepository
 from py_reportit.shared.repository.meta import MetaRepository
 from py_reportit.shared.repository.report_answer import ReportAnswerRepository
-from py_reportit.crawler.service.reportit_api import ReportItService
+from py_reportit.crawler.service.reportit_api import ReportItService, ReportNotFoundException
 from py_reportit.crawler.service.photo import PhotoService
 from py_reportit.crawler.util.reportit_utils import extract_ids, filter_reports_by_state, reports_are_roughly_equal_by_position
 
@@ -59,6 +63,47 @@ class CrawlerService:
 
         return recent_reports
 
+    def process_report(self, reportId: int) -> Report:
+        fetched_report = self.api_service.get_report_with_answers(reportId, self.photo_service.process_base64_photo_if_not_downloaded_yet)
+
+        self.report_repository.update_or_create(fetched_report)
+        self.report_answer_repository.update_or_create_all(fetched_report.answers)
+
+        return fetched_report
+
+    def process_bulk_reports(
+        self,
+        reportIds: list[int],
+        stop_condition: Optional[Callable[[Report], bool]] = None,
+    ) -> list[Report]:
+        logger.info(f"Fetching bulk reports, {reportIds[0]} - {reportIds[-1]}")
+
+        reports = []
+
+        for reportId in reportIds:
+            try:
+                logger.debug(f"Fetching report with id {reportId}")
+                processed_report = self.process_report(reportId)
+                reports.append(processed_report)
+
+                if stop_condition and stop_condition(processed_report):
+                    logger.info(f"Stop condition hit at report with id {reportId}, stopping bulk crawl")
+                    break
+
+                sleep(float(self.config.get("FETCH_REPORTS_BULK_DELAY_SECONDS")))
+            except KeyboardInterrupt:
+                raise
+            except ReportNotFoundException:
+                logger.debug(f"No report found with id {reportId}, skipping.")
+            except Timeout:
+                logger.warn(f"Retrieval of report with id {reportId} timed out after {self.config('FETCH_REPORTS_TIMEOUT_SECONDS')} seconds, skipping")
+            except RequestException:
+                logger.warn(f"Retrieval of report with id {reportId} failed, skipping", exc_info=True)
+            except:
+                logger.error(f"Error while trying to fetch report with id {reportId}, skipping", exc_info=True)
+
+        return reports
+
     def crawl(self):
         new_or_updated_reports = []
 
@@ -78,26 +123,23 @@ class CrawlerService:
         all_combined_ids = recent_ids + lookahead_ids
         relevant_combined_ids = [report_id for report_id in all_combined_ids if report_id not in closed_recent_report_ids]
 
+        add.delay(1,1)
+        return
         try:
             latest_truncated_report = self.api_service.get_latest_truncated_report()
 
             crawl_stop_condition = lambda current_report: reports_are_roughly_equal_by_position(current_report, latest_truncated_report, 5)
-        except HTTPError as e:
+        except HTTPError:
             logger.warn(f"Encountered error while trying to fetch latest truncated report, not setting stop condition.", exc_info=True)
             crawl_stop_condition = None
 
         try:
             logger.info(f"Fetching {len(relevant_combined_ids)} reports, of which {len(relevant_combined_ids) - len(lookahead_ids)} existing reports")
 
-            reports = self.api_service.get_bulk_reports(relevant_combined_ids, crawl_stop_condition, self.photo_service.process_base64_photo_if_not_downloaded_yet)
+            reports = self.process_bulk_reports(relevant_combined_ids, crawl_stop_condition)
 
             logger.info(f"{len(reports)} actual reports fetched")
             new_or_updated_reports = self.filter_updated_reports(recent_reports, reports)
-
-            self.report_repository.update_or_create_all(reports)
-
-            for report in reports:
-                self.report_answer_repository.update_or_create_all(report.answers)
 
         except KeyboardInterrupt:
             raise
