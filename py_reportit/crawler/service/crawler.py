@@ -1,4 +1,4 @@
-import logging, sys
+import logging, sys, random
 
 from datetime import datetime, timedelta
 from time import sleep
@@ -14,10 +14,11 @@ from py_reportit.shared.repository.meta import MetaRepository
 from py_reportit.shared.repository.report_answer import ReportAnswerRepository
 from py_reportit.crawler.service.reportit_api import ReportItService, ReportNotFoundException
 from py_reportit.crawler.service.photo import PhotoService
-from py_reportit.crawler.util.reportit_utils import extract_ids, filter_reports_by_state, reports_are_roughly_equal_by_position
+from py_reportit.crawler.util.reportit_utils import extract_ids, filter_reports_by_state, reports_are_roughly_equal_by_position, generate_random_times_between
 
 logger = logging.getLogger(f"py_reportit.{__name__}")
 
+format_time: Callable[[datetime], str] = lambda dtime: dtime.strftime("%Y/%m/%d %H:%M:%S") 
 
 class CrawlerService:
 
@@ -104,6 +105,21 @@ class CrawlerService:
 
         return reports
 
+    def generate_crawl_times(self, amount: int) -> list[tuple[int, datetime]]:
+        crawl_offset_minutes = random.randint(int(self.config.get("CRAWL_FIRST_OFFSET_MINUTES_MIN")), int(self.config.get("CRAWL_FIRST_OFFSET_MINUTES_MAX")))
+        crawl_duration_minutes = random.randint(int(self.config.get("CRAWL_DURATION_MINUTES_MIN")), int(self.config.get("CRAWL_DURATION_MINUTES_MAX")))
+        crawl_start_time = datetime.now() + timedelta(minutes=crawl_offset_minutes)
+        crawl_end_time = crawl_start_time + timedelta(minutes=crawl_duration_minutes)
+
+        logger.info(f"Generating {amount} crawl times from {format_time(crawl_start_time)} to {format_time(crawl_end_time)}. Offset: {crawl_offset_minutes} min, duration: {crawl_duration_minutes} min")
+        return generate_random_times_between(crawl_start_time, crawl_end_time, amount)
+
+    @staticmethod
+    def log_ids_and_crawl_times(ids_and_crawl_times: list[tuple[int, datetime]]) -> None:
+        for id_and_crawl_time in ids_and_crawl_times:
+            pretty_time = format_time(id_and_crawl_time[1])
+            logger.debug(f"Id {id_and_crawl_time[0]} will be crawled at {pretty_time}")
+
     def crawl(self):
         new_or_updated_reports = []
 
@@ -120,18 +136,24 @@ class CrawlerService:
             logger.info(f"No recent reports found in database, beginning crawl from fallback id {fallback_id}")
 
         lookahead_ids = list(range(recent_ids[-1] + 1, recent_ids[-1] + 1 + int(self.config.get("FETCH_REPORTS_LOOKAHEAD_AMOUNT"))))
-        all_combined_ids = recent_ids + lookahead_ids
+        all_combined_ids = random.sample(recent_ids, len(recent_ids)) + lookahead_ids
         relevant_combined_ids = [report_id for report_id in all_combined_ids if report_id not in closed_recent_report_ids]
 
-        add.delay(1,1)
-        return
+        crawl_times = self.generate_crawl_times(len(relevant_combined_ids))
+
+        ids_and_crawl_times = zip(relevant_combined_ids, crawl_times)
+
+        self.log_ids_and_crawl_times(ids_and_crawl_times)
+
+        #add.delay(1,1)
+        #return
         try:
             latest_truncated_report = self.api_service.get_latest_truncated_report()
 
-            crawl_stop_condition = lambda current_report: reports_are_roughly_equal_by_position(current_report, latest_truncated_report, 5)
+            #crawl_stop_condition = lambda current_report: reports_are_roughly_equal_by_position(current_report, latest_truncated_report, 5)
         except HTTPError:
             logger.warn(f"Encountered error while trying to fetch latest truncated report, not setting stop condition.", exc_info=True)
-            crawl_stop_condition = None
+            #crawl_stop_condition = None
 
         try:
             logger.info(f"Fetching {len(relevant_combined_ids)} reports, of which {len(relevant_combined_ids) - len(lookahead_ids)} existing reports")

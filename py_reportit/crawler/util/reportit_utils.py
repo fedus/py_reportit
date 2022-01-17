@@ -1,7 +1,9 @@
 import re
-from textwrap import TextWrapper
 
+from textwrap import TextWrapper
 from unicodedata import normalize
+from datetime import datetime, timedelta
+from random import choices
 
 from py_reportit.shared.model.answer_meta import ReportAnswerMeta
 from py_reportit.shared.model.answer_meta_tweet import AnswerMetaTweet
@@ -54,6 +56,18 @@ def get_last_tweet_id(report: Report) -> str:
         return max(tweet_ids, key=lambda tweet_id: tweet_id.order).tweet_id
 
     return None
+
+# Adapted from https://www.geeksforgeeks.org/python-generate-k-random-dates-between-two-other-dates/
+def generate_random_times_between(start: datetime, end: datetime, amount: int) -> list[datetime]:
+    result_datetimes = [start]
+
+    current_datetime = start
+
+    while current_datetime != end:
+        current_datetime += timedelta(seconds=1)
+        result_datetimes.append(current_datetime)
+
+    return sorted(choices(result_datetimes, k=amount))
 
 # The following constants come from python-twitter
 # https://github.com/bear/python-twitter/blob/master/twitter/twitter_utils.py
