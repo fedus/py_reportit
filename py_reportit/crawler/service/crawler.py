@@ -6,7 +6,7 @@ from typing import Callable, Optional
 from requests.models import HTTPError
 from requests.exceptions import RequestException, Timeout
 
-from py_reportit.crawler.tasks import add
+from py_reportit.crawler.celery.tasks import add
 from py_reportit.shared.model.report import Report
 from py_reportit.crawler.post_processors.abstract_pp import PostProcessorDispatcher
 from py_reportit.shared.repository.report import ReportRepository

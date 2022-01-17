@@ -107,6 +107,6 @@ def build_container() -> Container:
 
     container.config.from_dict(config)
 
-    container.wire(modules=["__main__"])
+    container.wire(modules=[".py_reportit"], from_package="py_reportit.crawler")
 
     return container
