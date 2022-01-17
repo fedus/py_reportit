@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from dependency_injector.wiring import inject, Provide
-from py_reportit.crawler.celery.celery import app
-from py_reportit.shared.config import container
+from celery import shared_task
+from py_reportit.crawler.service.reportit_api import ReportItService
 
-@app.task
+@shared_task
 @inject
-def add(x, y, bla = Provide[container.Container.geocoder_service]):
-    print(bla)
+def add(x, y, something: ReportItService = Provide['reportit_service']):
+    print(something)
     if x < 10:
         add.delay(x+1,y+1)
     return x + y

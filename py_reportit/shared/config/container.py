@@ -102,11 +102,11 @@ class Container(containers.DeclarativeContainer):
         report_answer_repository=report_answer_repository,
     )
 
-def build_container() -> Container:
+def build_container_for_crawler() -> Container:
     container = Container()
 
     container.config.from_dict(config)
 
-    container.wire(modules=[".py_reportit"], from_package="py_reportit.crawler")
+    container.wire(modules=[".py_reportit", ".celery.tasks"], from_package="py_reportit.crawler")
 
     return container
