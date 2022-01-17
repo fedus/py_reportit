@@ -6,11 +6,11 @@ from datetime import datetime
 from dependency_injector.wiring import Provide, inject
 from dependency_injector.providers import Resource
 
+from py_reportit.shared.config.container import build_container_for_crawler
+from py_reportit.crawler.celery.celery import create_celery_app
 from py_reportit.shared.config.container import Container
 from py_reportit.shared.model import *
 from py_reportit.crawler.service.crawler import CrawlerService
-
-logger = logging.getLogger(f"py_reportit.{__name__}")
 
 class ShutdownException(Exception):
     pass
@@ -67,3 +67,19 @@ class App:
         logger.info(f'Received: {signum}, initiating shutdown')
         self.do_shutdown = True
         raise ShutdownException
+
+container = build_container_for_crawler()
+
+config = container.config()
+
+logging.basicConfig(encoding='utf-8')
+logger = logging.getLogger(f"py_reportit")
+logger.setLevel(config.get("LOG_LEVEL"))
+
+
+celery_app = create_celery_app(config.get('CELERY_BROKER'))
+
+def run_app():
+    app = App()
+    app.container = container
+    app.run()

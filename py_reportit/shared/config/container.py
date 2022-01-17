@@ -107,6 +107,6 @@ def build_container_for_crawler() -> Container:
 
     container.config.from_dict(config)
 
-    container.wire(modules=[".py_reportit", ".celery.tasks"], from_package="py_reportit.crawler")
+    container.wire(modules=["__main__", ".py_reportit", ".celery.tasks"], from_package="py_reportit.crawler")
 
     return container

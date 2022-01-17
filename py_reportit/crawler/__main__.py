@@ -4,7 +4,7 @@ import logging
 
 from datetime import datetime
 
-from py_reportit.crawler import run_app
+from py_reportit.crawler.py_reportit import run_app
 
 logger = logging.getLogger(f"py_reportit.{__name__}")
 
