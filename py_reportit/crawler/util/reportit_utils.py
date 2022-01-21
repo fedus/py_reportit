@@ -22,8 +22,11 @@ def truncate_float(f: float, decimals: int) -> float:
     return int(f*10**decimals)/10**decimals
 
 def reports_are_roughly_equal_by_position(r1: Report, r2: Report, decimals: int) -> bool:
-    lats_are_equal = truncate_float(float(r1.latitude), decimals) == truncate_float(float(r2.latitude), decimals)
-    lons_are_equal = truncate_float(float(r1.longitude), decimals) == truncate_float(float(r2.longitude), decimals)
+    return positions_are_rougly_equal(r1.latitude, r1.longitude, r2.latitude, r2.longitude, decimals)
+
+def positions_are_rougly_equal(lat1: float or str, lon1: float or str, lat2: float or str, lon2: float or str, decimals: int) -> bool:
+    lats_are_equal = truncate_float(float(lat1), decimals) == truncate_float(float(lat2), decimals)
+    lons_are_equal = truncate_float(float(lon1), decimals) == truncate_float(float(lon2), decimals)
 
     return lats_are_equal and lons_are_equal
 

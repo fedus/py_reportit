@@ -6,7 +6,7 @@ from typing import Callable, Optional
 from requests.models import HTTPError
 from requests.exceptions import RequestException, Timeout
 
-from py_reportit.crawler.celery.tasks import add
+from py_reportit.crawler.celery.tasks import crawl_single, test
 from py_reportit.shared.model.report import Report
 from py_reportit.crawler.post_processors.abstract_pp import PostProcessorDispatcher
 from py_reportit.shared.repository.report import ReportRepository
@@ -64,18 +64,11 @@ class CrawlerService:
 
         return recent_reports
 
-    def process_report(self, reportId: int) -> Report:
-        fetched_report = self.api_service.get_report_with_answers(reportId, self.photo_service.process_base64_photo_if_not_downloaded_yet)
-
-        self.report_repository.update_or_create(fetched_report)
-        self.report_answer_repository.update_or_create_all(fetched_report.answers)
-
-        return fetched_report
-
     def process_bulk_reports(
         self,
         reportIds: list[int],
-        stop_condition: Optional[Callable[[Report], bool]] = None,
+        last_lat: Optional[float] = None,
+        last_lon: Optional[float] = None
     ) -> list[Report]:
         logger.info(f"Fetching bulk reports, {reportIds[0]} - {reportIds[-1]}")
 
@@ -84,12 +77,8 @@ class CrawlerService:
         for reportId in reportIds:
             try:
                 logger.debug(f"Fetching report with id {reportId}")
-                processed_report = self.process_report(reportId)
-                reports.append(processed_report)
-
-                if stop_condition and stop_condition(processed_report):
-                    logger.info(f"Stop condition hit at report with id {reportId}, stopping bulk crawl")
-                    break
+                #processed_report = self.process_report(reportId)
+                #reports.append(processed_report)
 
                 sleep(float(self.config.get("FETCH_REPORTS_BULK_DELAY_SECONDS")))
             except KeyboardInterrupt:
@@ -145,10 +134,17 @@ class CrawlerService:
 
         self.log_ids_and_crawl_times(ids_and_crawl_times)
 
-        #add.delay(1,1)
-        #return
+        last_lat = None
+        last_lon = None
+
+        test.delay(datetime.now())
+        return
+
         try:
             latest_truncated_report = self.api_service.get_latest_truncated_report()
+
+            last_lat = float(latest_truncated_report.latitude) if latest_truncated_report.latitude else None
+            last_lon = float(latest_truncated_report.longitude) if latest_truncated_report.longitude else None
 
             #crawl_stop_condition = lambda current_report: reports_are_roughly_equal_by_position(current_report, latest_truncated_report, 5)
         except HTTPError:
@@ -158,7 +154,7 @@ class CrawlerService:
         try:
             logger.info(f"Fetching {len(relevant_combined_ids)} reports, of which {len(relevant_combined_ids) - len(lookahead_ids)} existing reports")
 
-            reports = self.process_bulk_reports(relevant_combined_ids, crawl_stop_condition)
+            reports = self.process_bulk_reports(relevant_combined_ids, last_lat, last_lon)
 
             logger.info(f"{len(reports)} actual reports fetched")
             new_or_updated_reports = self.filter_updated_reports(recent_reports, reports)
