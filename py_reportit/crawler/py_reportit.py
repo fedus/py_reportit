@@ -77,7 +77,7 @@ logger = logging.getLogger(f"py_reportit")
 logger.setLevel(config.get("LOG_LEVEL"))
 
 
-celery_app = create_celery_app(config.get('CELERY_BROKER'))
+celery_app = create_celery_app(config)
 
 def run_app():
     app = App()
