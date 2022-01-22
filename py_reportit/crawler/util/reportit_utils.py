@@ -1,6 +1,8 @@
 import re
+import pytz
 
 from textwrap import TextWrapper
+from typing import Callable
 from unicodedata import normalize
 from datetime import datetime, timedelta
 from random import choices
@@ -71,6 +73,13 @@ def generate_random_times_between(start: datetime, end: datetime, amount: int) -
         result_datetimes.append(current_datetime)
 
     return sorted(choices(result_datetimes, k=amount))
+
+def to_utc(dtime: datetime) -> datetime:
+    lu_tz = pytz.timezone('Europe/Luxembourg')
+    lu_dt = lu_tz.localize(dtime)
+    return lu_dt.astimezone(pytz.UTC)
+
+format_time: Callable[[datetime], str] = lambda dtime: dtime.strftime("%Y/%m/%d %H:%M:%S")
 
 # The following constants come from python-twitter
 # https://github.com/bear/python-twitter/blob/master/twitter/twitter_utils.py
