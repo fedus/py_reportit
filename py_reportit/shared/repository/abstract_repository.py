@@ -69,11 +69,11 @@ class AbstractRepository(ABC, Generic[Model]):
             self.update_or_create(session, entity)
 
     def create(self, session: Session, entity: Model) -> None:
-        session.add(session, entity)
+        session.add(entity)
         session.commit()
 
     def create_all(self, session: Session, entities: list[Model]) -> None:
-        session.add_all(session, entities)
+        session.add_all(entities)
         session.commit()
 
     def update_many(self, session: Session, values: dict, *where_clauses) -> int:

@@ -80,7 +80,8 @@ def chained_crawl(
 
     popped_ids_and_crawl_times = ids_and_crawl_times[1:]
     next_task_execution_report_id = popped_ids_and_crawl_times[0][0]
-    next_task_execution_time = popped_ids_and_crawl_times[0][1]
+    # The following is a crutch since the datetime format seems to get lost sometimes during de/serialization in Celery
+    next_task_execution_time = popped_ids_and_crawl_times[0][1] if isinstance(popped_ids_and_crawl_times[0][1], datetime) else datetime.fromisoformat(popped_ids_and_crawl_times[0][1])
 
     logger.info(f"{len(popped_ids_and_crawl_times)} crawls remaining, scheduling crawl for report id {next_task_execution_report_id} at {pretty_format_time(next_task_execution_time)}")
 
