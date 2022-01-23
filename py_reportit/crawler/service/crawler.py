@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging, sys, random
 
 from datetime import datetime, timedelta
+from sqlalchemy.orm import Session
 from requests.models import HTTPError
 
 from py_reportit.crawler.celery.tasks import chained_crawl
@@ -34,9 +35,6 @@ class CrawlerService:
         self.api_service = api_service
         self.photo_service = photo_service
 
-    def get_finished_reports_count(self) -> int:
-        return self.report_repository.count_by(Report.status=="finished")
-
     @staticmethod
     def filter_updated_reports(existing_reports: list[Report], new_reports: list[Report]) -> list[Report]:
         get_existing_report = lambda new_report: next(filter(lambda existing_report: existing_report.id == new_report.id, existing_reports), None)
@@ -48,11 +46,11 @@ class CrawlerService:
         removed_count = len(list(set(pre_crawl_ids) - set(crawled_ids)))
         return (added_count, removed_count)
 
-    def get_recent_reports(self) -> list[Report]:
-        recent_reports = self.report_repository.get_by(Report.created_at > datetime.today() - timedelta(days=int(self.config.get("FETCH_REPORTS_OF_LAST_DAYS"))))
+    def get_recent_reports(self, session: Session) -> list[Report]:
+        recent_reports = self.report_repository.get_by(session, Report.created_at > datetime.today() - timedelta(days=int(self.config.get("FETCH_REPORTS_OF_LAST_DAYS"))))
 
         if not recent_reports:
-            recent_reports = self.report_repository.get_latest(int(self.config.get("FETCH_REPORTS_FALLBACK_AMOUNT")))
+            recent_reports = self.report_repository.get_latest(session, int(self.config.get("FETCH_REPORTS_FALLBACK_AMOUNT")))
 
         if not recent_reports:
             recent_reports = []
@@ -74,11 +72,11 @@ class CrawlerService:
             pretty_time = format_time(id_and_crawl_time[1])
             logger.debug(f"Id {id_and_crawl_time[0]} will be crawled at {pretty_time}")
 
-    def crawl(self):
+    def crawl(self, session: Session):
         #new_or_updated_reports = []
 
         logger.info("Fetching existing recent reports from database ...")
-        recent_reports = self.get_recent_reports()
+        recent_reports = self.get_recent_reports(session)
 
         if recent_reports:
             recent_ids = extract_ids(recent_reports)

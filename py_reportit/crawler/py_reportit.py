@@ -7,6 +7,7 @@ from dependency_injector.wiring import Provide, inject
 from dependency_injector.providers import Resource
 from celery.schedules import crontab
 from py_reportit.crawler.util.reportit_utils import string_to_crontab_kwargs
+from sqlalchemy.orm import sessionmaker
 
 from py_reportit.shared.config.container import build_container_for_crawler
 from py_reportit.crawler.celery.celery import create_celery_app
@@ -29,14 +30,14 @@ class App:
     def execute_crawler(
         self,
         crawler: CrawlerService = Provide[Container.crawler_service],
-        session_provider: Resource = Provide[Container.session.provider],
+        session_maker: sessionmaker = Provide[Container.sessionmaker],
         requests_session_provider: Resource = Provide[Container.requests_session.provider],
     ):
         logger.info(f"Starting crawl at {datetime.now()}")
 
         try:
-            crawler.crawl()
-            session_provider.shutdown()
+            with sessionmaker() as session:
+                crawler.crawl(session)
             requests_session_provider.shutdown()
         except KeyboardInterrupt:
             raise

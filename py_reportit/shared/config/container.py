@@ -31,14 +31,12 @@ class Container(containers.DeclarativeContainer):
 
     sessionmaker = providers.Singleton(db.provided.sqlalchemy_sessionmaker)
 
-    session = providers.Resource(get_session, database=db)
-
     requests_session = providers.Resource(get_requests_session, config=config)
 
     # Repositories
-    report_repository = providers.Factory(ReportRepository, session=session)
-    meta_repository = providers.Factory(MetaRepository, session=session)
-    report_answer_repository = providers.Factory(ReportAnswerRepository, session=session)
+    report_repository = providers.Factory(ReportRepository)
+    meta_repository = providers.Factory(MetaRepository)
+    report_answer_repository = providers.Factory(ReportAnswerRepository)
 
     # Services
     reportit_service = providers.Factory(ReportItService, config=config, requests_session=requests_session)

@@ -4,6 +4,7 @@ import tweepy
 
 from time import sleep
 from sqlalchemy.sql.elements import and_
+from sqlalchemy.orm import Session
 
 from py_reportit.crawler.post_processors.abstract_pp import PostProcessor
 from py_reportit.shared.model.report import Report
@@ -29,21 +30,22 @@ class Twitter(PostProcessor):
         super().__init__(*args, **kwargs)
         self.tweet_service = TweetService(self.config)
 
-    def process(self, new_or_updated_reports: list[Report]):
-        self.process_reports()
-        self.process_answers()
+    def process(self, session: Session, new_or_updated_reports: list[Report]):
+        self.process_reports(session)
+        self.process_answers(session)
 
-    def process_reports(self):
+    def process_reports(self, session: Session):
         if bool(int(self.config.get("TWITTER_POST_REPORTS"))):
             delay = int(self.config.get("TWITTER_DELAY_SECONDS"))
             unprocessed_reports = self.report_repository.get_by(
+                session,
                 Report.meta.has(Meta.do_tweet==True),
                 Report.meta.has(Meta.tweeted==False)
             )
             logger.info("Processing %d reports", len(unprocessed_reports))
             for report in unprocessed_reports:
                 try:
-                    self.tweet_report(report)
+                    self.tweet_report(session, report)
                 except KeyboardInterrupt:
                     raise
                 except:
@@ -57,10 +59,11 @@ class Twitter(PostProcessor):
         else:
             logger.info("Skipping posting new reports to Twitter ...")
 
-    def process_answers(self):
+    def process_answers(self, session: Session):
         if bool(int(self.config.get("TWITTER_POST_ANSWERS"))):
             delay = int(self.config.get("TWITTER_DELAY_SECONDS"))
             unprocessed_reports = self.report_repository.get_by(
+                session,
                 Report.meta.has(Meta.do_tweet==True),
                 Report.meta.has(Meta.tweet_ids != None),
                 Report.answers.any(
@@ -77,7 +80,7 @@ class Twitter(PostProcessor):
                 logger.info("Processing %d answers", len(answers))
                 for answer in answers:
                     try:
-                        self.tweet_answer(report, answer)
+                        self.tweet_answer(session, report, answer)
                     except KeyboardInterrupt:
                         raise
                     except:
@@ -91,7 +94,7 @@ class Twitter(PostProcessor):
         else:
             logger.info("Skipping posting new answers to Twitter ...")
 
-    def tweet_report(self, report: Report) -> None:
+    def tweet_report(self, session: Session, report: Report) -> None:
         logger.info(f"Tweeting report {report.id}")
         media_filename = f"{self.config.get('PHOTO_DOWNLOAD_FOLDER')}/{report.id}.jpg" if report.has_photo else None
         title = f"{report.title}\n" if report.has_title else ""
@@ -110,9 +113,9 @@ class Twitter(PostProcessor):
 
         report.meta.tweeted = True
         report.meta.tweet_ids = tweet_metas
-        self.report_repository.session.commit()
+        session.commit()
 
-    def tweet_answer(self, report: Report, answer: ReportAnswer) -> None:
+    def tweet_answer(self, session: Session, report: Report, answer: ReportAnswer) -> None:
         last_tweet_id = get_last_tweet_id(report)
 
         if not last_tweet_id:
@@ -137,7 +140,7 @@ class Twitter(PostProcessor):
 
         answer.meta.tweeted = True
         answer.meta.tweet_ids = tweet_metas
-        self.report_repository.session.commit()
+        session.commit()
 
 class TweetService:
 

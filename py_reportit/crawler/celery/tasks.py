@@ -4,8 +4,9 @@ import sys
 
 from datetime import datetime, timedelta
 from dependency_injector.wiring import inject, Provide, Provider
-from celery import shared_task
+from celery import shared_task, Task
 from celery.utils.log import get_task_logger
+from sqlalchemy.orm import Session, sessionmaker
 from requests.exceptions import RequestException, Timeout
 from dependency_injector.providers import Resource
 
@@ -19,9 +20,27 @@ from py_reportit.crawler.util.reportit_utils import generate_random_times_betwee
 
 logger = get_task_logger(__name__)
 
-@shared_task(name="tasks.chained_crawl")
+class DBTask(Task):
+
+    def __init__(self, session_maker: sessionmaker = Provide["sessionmaker"]):
+        self.session_maker = session_maker
+        self._session: Session = None
+
+    def after_return(self, *args, **kwargs):
+        if self._session is not None:
+            self._session.close()
+
+    @property
+    def session(self):
+        if self._session is None:
+            self._session = self.session_maker()
+
+        return self._session
+
+@shared_task(name="tasks.chained_crawl", base=DBTask, bind=True)
 @inject
 def chained_crawl(
+    self,
     ids_and_crawl_times: list[tuple[int, datetime]],
     stop_at_lat: float,
     stop_at_lon: float,
@@ -38,8 +57,8 @@ def chained_crawl(
     try:
         fetched_report = api_service.get_report_with_answers(current_report_id, photo_service.process_base64_photo_if_not_downloaded_yet)
 
-        report_repository.update_or_create(fetched_report)
-        report_answer_repository.update_or_create_all(fetched_report.answers)
+        report_repository.update_or_create(self.session, fetched_report)
+        report_answer_repository.update_or_create_all(self.session, fetched_report.answers)
 
         logger.info(f"Successfully processed report with id {current_report_id}, title: {fetched_report.title}")
 
@@ -68,19 +87,16 @@ def chained_crawl(
 
     chained_crawl.apply_async([popped_ids_and_crawl_times, stop_at_lat, stop_at_lon], eta=to_utc(next_task_execution_time))
 
-@shared_task(name="tasks.launch_chained_crawl")
+@shared_task(name="tasks.launch_chained_crawl", base=DBTask, bind=True)
 @inject
 def launch_chained_crawl(
+    self,
     crawler: crawler.CrawlerService = Provide['crawler_service'],
-    session_provider: Provider[Resource] = Provide['session.provider'],
-    requests_session_provider: Provider[Resource] = Provide['requests_session.provider'],
 ) -> None:
     logger.info(f"Starting crawl scheduler at {datetime.now()}")
 
     try:
-        crawler.crawl()
-        session_provider.shutdown()
-        requests_session_provider.shutdown()
+        crawler.crawl(self.session)
     except:
         logger.error("Error during crawl: ", sys.exc_info()[0])
 
@@ -102,11 +118,11 @@ def schedule_crawl(offset_minutes_min: int, offset_minutes_max: int) -> None:
 
     launch_chained_crawl.apply_async(eta=to_utc(next_crawl_time))
 
-@shared_task(name="tasks.post_processors")
+@shared_task(name="tasks.post_processors", base=DBTask, bind=True)
 @inject
-def run_post_processors(pp_dispatcher: PostProcessorDispatcher = Provide["post_processor_dispatcher"]) -> None:
+def run_post_processors(self, pp_dispatcher: PostProcessorDispatcher = Provide["post_processor_dispatcher"]) -> None:
     logger.info("Running post processors")
 
     for pp in pp_dispatcher.post_processors:
         logger.info(f"Running post processor {pp}")
-        pp.process([]) # TODO: Provide new or updated reports (not necessary with current post processors)
+        pp.process(self.session, []) # TODO: Provide new or updated reports (not necessary with current post processors)

@@ -95,7 +95,7 @@ def get_reports(
     neighbourhood: Optional[str] = Query(None, description="The neighbourhood to search for."),
     postcode: Optional[int] = Query(None, description="The postcode to search for."),
     search_text: Optional[str] = Query(None, description="Only reports matching the given search text in their title or description will be returned."),
-    report_repository_provider: Provider = Depends(Provide[Container.report_repository.provider]),
+    report_repository: ReportRepository = Depends(Provide[Container.report_repository]),
     session: Session = Depends(get_session)
 ):
     """
@@ -103,8 +103,6 @@ def get_reports(
     \f
     :param page: The page to retrieve for the paginated query..
     """
-    report_repository: ReportRepository = report_repository_provider(session=session)
-
     boxed_page_size = max(1, min(100, page_size))
 
     and_q = []
@@ -139,6 +137,7 @@ def get_reports(
         or_q = list(map(lambda col: col.like(f'%{search_text}%'), search_attrs))
 
     paged_reports_with_count = report_repository.get_paged(
+        session,
         page_size=boxed_page_size,
         page=page,
         by=report.Report.__dict__[sort_by],
@@ -159,21 +158,20 @@ def get_reports(
 @app.get("/reports/all", response_model=List[Report], tags=["reports"])
 @inject
 def get_reports(
-    report_repository_provider: Provider = Depends(Provide[Container.report_repository.provider]),
+    report_repository: ReportRepository = Depends(Provide[Container.report_repository]),
     session: Session = Depends(get_session)
 ):
     """
     Retrieve all reports in the system, basically a database dump.
     **Using this endpoint is strongly discouraged.** Please consider using the paginated and filtered endpoint instead!
     """
-    report_repository: ReportRepository = report_repository_provider(session=session)
-    return report_repository.get_all()
+    return report_repository.get_all(session)
 
 @app.get("/reports/{reportId}", response_model=Report, tags=["reports"])
 @inject
 def get_report(
     reportId: int = Path(None, description="The ID of the report to retrieve"),
-    report_repository_provider: Provider = Depends(Provide[Container.report_repository.provider]),
+    report_repository: ReportRepository = Depends(Provide[Container.report_repository]),
     session: Session = Depends(get_session)
 ):
     """
@@ -181,8 +179,7 @@ def get_report(
     \f
     :param reportId: The report ID
     """
-    report_repository: ReportRepository = report_repository_provider(session=session)
-    report = report_repository.get_by_id(reportId)
+    report = report_repository.get_by_id(session, reportId)
     if report is None:
         raise HTTPException(status_code=404, detail=f"Report with id {reportId} does not exist")
     return report
