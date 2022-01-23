@@ -1,16 +1,18 @@
 import dataclasses
 
 from abc import ABC, abstractmethod
+from sqlalchemy.orm import Session
+
 from py_reportit.crawler.service.geocoder import GeocoderService
-
 from py_reportit.crawler.service.reportit_api import ReportItService
-
 from py_reportit.shared.model.report import Report
 from py_reportit.shared.repository.report_answer import ReportAnswerRepository
 from py_reportit.shared.repository.meta import MetaRepository
 from py_reportit.shared.repository.report import ReportRepository
 
 class PostProcessor(ABC):
+
+    immediate_run = False
 
     def __init__(self,
                  config: dict,
@@ -28,7 +30,7 @@ class PostProcessor(ABC):
         super().__init__()
 
     @abstractmethod
-    def process(self, new_or_updated_reports: list[Report]):
+    def process(self, session: Session, new_or_updated_reports: list[Report]):
         pass
 
 @dataclasses.dataclass

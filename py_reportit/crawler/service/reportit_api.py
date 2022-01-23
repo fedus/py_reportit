@@ -1,11 +1,10 @@
-import requests, re, logging, json
+import re, logging, json
 
 from typing import Callable, Optional
 from base64 import b64decode
 from bs4.element import ResultSet
 from bs4 import BeautifulSoup
 from datetime import datetime
-from time import sleep
 from requests.models import Response
 from requests.sessions import Session
 from toolz.dicttoolz import dissoc
@@ -51,38 +50,6 @@ class ReportItService:
             )
         )
         return sorted(unsorted_reports, key=lambda report: report.id)
-
-    def get_bulk_reports(
-        self,
-        reportIds: list[int],
-        stop_condition: Optional[Callable[[Report], bool]] = None,
-        photo_callback: Optional[Callable[[Report, str], None]] = None
-    ) -> list[Report]:
-        logger.info(f"Fetching bulk reports, {reportIds[0]} - {reportIds[-1]}")
-
-        reports = []
-
-        for reportId in reportIds:
-            try:
-                logger.debug(f"Fetching report with id {reportId}")
-                fetched_report = self.get_report_with_answers(reportId, photo_callback)
-                reports.append(fetched_report)
-
-                if stop_condition and stop_condition(fetched_report):
-                    logger.info(f"Stop condition hit at report with id {reportId}, stopping bulk crawl")
-                    break
-
-                sleep(float(self.config.get("FETCH_REPORTS_BULK_DELAY_SECONDS")))
-            except KeyboardInterrupt:
-                raise
-            except ReportNotFoundException:
-                logger.debug(f"No report found with id {reportId}, skipping.")
-            except requests.exceptions.Timeout:
-                logger.warn(f"Retrieval of report with id {reportId} timed out after {self.config('FETCH_REPORTS_TIMEOUT_SECONDS')} seconds, skipping")
-            except:
-                logger.error(f"Error while trying to fetch report with id {reportId}, skipping", exc_info=True)
-
-        return reports
 
     def get_report_with_answers(self, reportId: int, photo_callback: Optional[Callable[[Report, str], None]] = None) -> Report:
         r = self.fetch_report_page(reportId)

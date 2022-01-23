@@ -1,7 +1,14 @@
-import re
-from textwrap import TextWrapper
+from __future__ import annotations
 
+import re
+import pytz
+
+from textwrap import TextWrapper
+from typing import Callable
 from unicodedata import normalize
+from datetime import datetime, timedelta
+from random import choices
+from py_reportit.crawler.post_processors import abstract_pp
 
 from py_reportit.shared.model.answer_meta import ReportAnswerMeta
 from py_reportit.shared.model.answer_meta_tweet import AnswerMetaTweet
@@ -20,8 +27,11 @@ def truncate_float(f: float, decimals: int) -> float:
     return int(f*10**decimals)/10**decimals
 
 def reports_are_roughly_equal_by_position(r1: Report, r2: Report, decimals: int) -> bool:
-    lats_are_equal = truncate_float(float(r1.latitude), decimals) == truncate_float(float(r2.latitude), decimals)
-    lons_are_equal = truncate_float(float(r1.longitude), decimals) == truncate_float(float(r2.longitude), decimals)
+    return positions_are_rougly_equal(r1.latitude, r1.longitude, r2.latitude, r2.longitude, decimals)
+
+def positions_are_rougly_equal(lat1: float or str, lon1: float or str, lat2: float or str, lon2: float or str, decimals: int) -> bool:
+    lats_are_equal = truncate_float(float(lat1), decimals) == truncate_float(float(lat2), decimals)
+    lons_are_equal = truncate_float(float(lon1), decimals) == truncate_float(float(lon2), decimals)
 
     return lats_are_equal and lons_are_equal
 
@@ -54,6 +64,40 @@ def get_last_tweet_id(report: Report) -> str:
         return max(tweet_ids, key=lambda tweet_id: tweet_id.order).tweet_id
 
     return None
+
+# Adapted from https://www.geeksforgeeks.org/python-generate-k-random-dates-between-two-other-dates/
+def generate_random_times_between(start: datetime, end: datetime, amount: int) -> list[datetime]:
+    result_datetimes = [start]
+
+    current_datetime = start
+
+    while current_datetime != end:
+        current_datetime += timedelta(seconds=1)
+        result_datetimes.append(current_datetime)
+
+    return sorted(choices(result_datetimes, k=amount))
+
+def to_utc(dtime: datetime) -> datetime:
+    lu_tz = pytz.timezone('Europe/Luxembourg')
+    lu_dt = lu_tz.localize(dtime)
+    return lu_dt.astimezone(pytz.UTC)
+
+def string_to_crontab_kwargs(crontab_str: str) -> dict:
+    ordered_celery_crontab_kwargs = ["minute", "hour", "day_of_month", "month_of_year", "day_of_week"]
+    crontab_str_split = crontab_str.split(" ")
+
+    if len(crontab_str_split) != 5:
+        raise CrontabParseException("Crontab string does not have expected number of arguments")
+
+    return dict(zip(ordered_celery_crontab_kwargs, crontab_str_split))
+
+class CrontabParseException(Exception):
+    pass
+
+def filter_pp(pps: list[abstract_pp.PostProcessor], immediate_run: bool = False) -> list[abstract_pp.PostProcessor]:
+    return list(filter(lambda pp: pp.immediate_run == immediate_run, pps))
+
+pretty_format_time: Callable[[datetime], str] = lambda dtime: dtime.strftime("%Y/%m/%d %H:%M:%S")
 
 # The following constants come from python-twitter
 # https://github.com/bear/python-twitter/blob/master/twitter/twitter_utils.py

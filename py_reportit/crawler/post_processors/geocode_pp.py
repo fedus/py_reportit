@@ -1,7 +1,7 @@
 import logging
-import sys
 
 from time import sleep
+from sqlalchemy.orm import Session
 
 from py_reportit.crawler.post_processors.abstract_pp import PostProcessor
 from py_reportit.shared.model.report import Report
@@ -12,7 +12,9 @@ logger = logging.getLogger(f"py_reportit.{__name__}")
 
 class Geocode(PostProcessor):
 
-    def process(self, new_or_updated_reports: list[Report]):
+    immediate_run = True
+
+    def process(self, session: Session, new_or_updated_reports: list[Report]):
         if not int(self.config.get("GEOCODE_ACTIVE")):
             logger.info("Geocoding not active, skipping")
             return
@@ -20,6 +22,7 @@ class Geocode(PostProcessor):
         delay = float(self.config.get("GEOCODE_DELAY_SECONDS"))
 
         unprocessed_reports = self.report_repository.get_by(
+            session,
             Report.latitude != None,
             Report.longitude != None,
             Report.meta.has(Meta.address_polled==False)
@@ -29,7 +32,7 @@ class Geocode(PostProcessor):
 
         for report in unprocessed_reports:
             try:
-                self.process_report(report)
+                self.process_report(session, report)
             except KeyboardInterrupt:
                 raise
             except:
@@ -38,7 +41,7 @@ class Geocode(PostProcessor):
                 logger.debug("Sleeping for %d seconds", delay)
                 sleep(delay)
 
-    def process_report(self, report: Report):
+    def process_report(self, session: Session, report: Report):
         logger.info(f"Processing report {report.id}")
 
         try:
@@ -53,5 +56,5 @@ class Geocode(PostProcessor):
         report.meta.address_postcode = int(geocode_results["postcode"]) if geocode_results["postcode"] else None
         report.meta.address_neighbourhood = geocode_results["neighbourhood"]
 
-        self.report_repository.session.commit()
+        session.commit()
 

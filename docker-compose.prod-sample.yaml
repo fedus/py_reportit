@@ -2,7 +2,7 @@ version: '3.1'
 
 services:
   db:
-    image: mariadb:10.3
+    image: mariadb:10.7
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: py_reportit_bot
@@ -19,6 +19,7 @@ services:
     depends_on:
       - db
     environment:
+      - MIGRATE=1
       - DB_HOST=db
       - DB_PORT=3306
       - DB_USER=py_reportit_bot
@@ -37,6 +38,8 @@ services:
     restart: always
     depends_on:
       - db
+    ports:
+      - 8090:80
     environment:
       - DB_HOST=db
       - DB_PORT=3306
@@ -47,6 +50,24 @@ services:
     volumes:
       - py_reportit_photos:/app/photos
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: always
+    ports:
+      - 8081:15672
+    environment:
+      RABBITMQ_DEFAULT_USER: py_reportit_bot
+      RABBITMQ_DEFAULT_PASS: py_reportit_bot
+    volumes:
+      - rabbitmq:/var/lib/rabbitmq
+
 volumes:
   py_reportit_photos:
+    external: true
+    name: py_reportit_py_reportit_photos
   py_reportit_db:
+    external: true
+    name: py_reportit_py_reportit_db
+  rabbitmq:
+    external: true
+    name: py_reportit_py_reportit_rabbitmq

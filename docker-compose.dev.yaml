@@ -29,3 +29,13 @@ services:
       - PMA_HOST=db
       - PMA_USER=py_reportit_bot
       - PMA_PASSWORD=py_reportit_bot
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: always
+    ports:
+      - 5672:5672
+      - 8081:15672
+    environment:
+      RABBITMQ_DEFAULT_USER: py_reportit_bot
+      RABBITMQ_DEFAULT_PASS: py_reportit_bot
