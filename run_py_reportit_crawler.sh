@@ -5,4 +5,4 @@ if [ -v MIGRATE ]; then
     alembic upgrade head
 fi
 
-exec python3 -m py_reportit.crawler.py_reportit
+exec celery -A py_reportit.crawler.py_reportit:celery_app worker -B loglevel=INFO
