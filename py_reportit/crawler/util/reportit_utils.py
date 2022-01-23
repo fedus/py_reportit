@@ -91,7 +91,7 @@ def string_to_crontab_kwargs(crontab_str: str) -> dict:
 class CrontabParseException(Exception):
     pass
 
-format_time: Callable[[datetime], str] = lambda dtime: dtime.strftime("%Y/%m/%d %H:%M:%S")
+pretty_format_time: Callable[[datetime], str] = lambda dtime: dtime.strftime("%Y/%m/%d %H:%M:%S")
 
 # The following constants come from python-twitter
 # https://github.com/bear/python-twitter/blob/master/twitter/twitter_utils.py

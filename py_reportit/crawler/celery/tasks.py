@@ -3,12 +3,11 @@ from __future__ import annotations
 import sys
 
 from datetime import datetime, timedelta
-from dependency_injector.wiring import inject, Provide, Provider
+from dependency_injector.wiring import inject, Provide
 from celery import shared_task, Task
 from celery.utils.log import get_task_logger
 from sqlalchemy.orm import Session, sessionmaker
 from requests.exceptions import RequestException, Timeout
-from dependency_injector.providers import Resource
 
 import py_reportit.crawler.service.crawler as crawler
 from py_reportit.crawler.service.photo import PhotoService
@@ -16,7 +15,7 @@ from py_reportit.crawler.service.reportit_api import ReportItService, ReportNotF
 from py_reportit.shared.repository.report import ReportRepository
 from py_reportit.shared.repository.report_answer import ReportAnswerRepository
 from py_reportit.crawler.post_processors.abstract_pp import PostProcessorDispatcher
-from py_reportit.crawler.util.reportit_utils import generate_random_times_between, positions_are_rougly_equal, format_time, to_utc
+from py_reportit.crawler.util.reportit_utils import generate_random_times_between, positions_are_rougly_equal, pretty_format_time, to_utc
 
 logger = get_task_logger(__name__)
 
@@ -83,7 +82,7 @@ def chained_crawl(
     next_task_execution_report_id = popped_ids_and_crawl_times[0][0]
     next_task_execution_time = popped_ids_and_crawl_times[0][1]
 
-    logger.info(f"{len(popped_ids_and_crawl_times)} crawls remaining, scheduling crawl for report id {next_task_execution_report_id} at {format_time(next_task_execution_time)}")
+    logger.info(f"{len(popped_ids_and_crawl_times)} crawls remaining, scheduling crawl for report id {next_task_execution_report_id} at {pretty_format_time(next_task_execution_time)}")
 
     chained_crawl.apply_async([popped_ids_and_crawl_times, stop_at_lat, stop_at_lon], eta=to_utc(next_task_execution_time))
 
@@ -110,11 +109,11 @@ def schedule_crawl(offset_minutes_min: int, offset_minutes_max: int) -> None:
     earliest_start_time = current_base_time + timedelta(minutes=offset_minutes_min)
     latest_start_time = current_base_time + timedelta(minutes=offset_minutes_max)
 
-    logger.debug(f"Generating random start time between {format_time(earliest_start_time)} and {format_time(latest_start_time)}")
+    logger.debug(f"Generating random start time between {pretty_format_time(earliest_start_time)} and {pretty_format_time(latest_start_time)}")
 
     next_crawl_time = generate_random_times_between(earliest_start_time, latest_start_time, 1)[0]
 
-    logger.info(f"Crawl scheduled to begin at {format_time(next_crawl_time)} (offsets were min: {offset_minutes_min} max: {offset_minutes_max})")
+    logger.info(f"Crawl scheduled to begin at {pretty_format_time(next_crawl_time)} (offsets were min: {offset_minutes_min} max: {offset_minutes_max})")
 
     launch_chained_crawl.apply_async(eta=to_utc(next_crawl_time))
 

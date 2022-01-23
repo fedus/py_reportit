@@ -13,7 +13,7 @@ from py_reportit.shared.repository.meta import MetaRepository
 from py_reportit.shared.repository.report_answer import ReportAnswerRepository
 from py_reportit.crawler.service.reportit_api import ReportItService
 from py_reportit.crawler.service.photo import PhotoService
-from py_reportit.crawler.util.reportit_utils import extract_ids, filter_reports_by_state, generate_random_times_between, format_time, to_utc
+from py_reportit.crawler.util.reportit_utils import extract_ids, filter_reports_by_state, generate_random_times_between, pretty_format_time, to_utc
 
 logger = logging.getLogger(f"py_reportit.{__name__}")
 
@@ -63,13 +63,13 @@ class CrawlerService:
         crawl_start_time = datetime.now() + timedelta(minutes=crawl_offset_minutes)
         crawl_end_time = crawl_start_time + timedelta(minutes=crawl_duration_minutes)
 
-        logger.info(f"Generating {amount} crawl times from {format_time(crawl_start_time)} to {format_time(crawl_end_time)}. Offset: {crawl_offset_minutes} min, duration: {crawl_duration_minutes} min")
+        logger.info(f"Generating {amount} crawl times from {pretty_format_time(crawl_start_time)} to {pretty_format_time(crawl_end_time)}. Offset: {crawl_offset_minutes} min, duration: {crawl_duration_minutes} min")
         return generate_random_times_between(crawl_start_time, crawl_end_time, amount)
 
     @staticmethod
     def log_ids_and_crawl_times(ids_and_crawl_times: list[tuple[int, datetime]]) -> None:
         for id_and_crawl_time in ids_and_crawl_times:
-            pretty_time = format_time(id_and_crawl_time[1])
+            pretty_time = pretty_format_time(id_and_crawl_time[1])
             logger.debug(f"Id {id_and_crawl_time[0]} will be crawled at {pretty_time}")
 
     def crawl(self, session: Session):
@@ -121,7 +121,7 @@ class CrawlerService:
 
             first_task_execution_time = ids_and_crawl_times[0][1]
 
-            logger.info(f"Queueing first crawl task, ETA {format_time(first_task_execution_time)}")
+            logger.info(f"Queueing first crawl task, ETA {pretty_format_time(first_task_execution_time)}")
 
             chained_crawl.apply_async([ids_and_crawl_times, last_lat, last_lon], eta=to_utc(first_task_execution_time))
 

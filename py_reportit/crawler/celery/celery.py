@@ -15,5 +15,6 @@ def create_celery_app(config: dict) -> Celery:
         broker=broker,
         task_serializer="yaml",
         result_serializer="yaml",
+        event_serialzer="yaml",
         accept_content = ["json", "yaml"],
     )
