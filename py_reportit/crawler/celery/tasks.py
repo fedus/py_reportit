@@ -15,7 +15,7 @@ from py_reportit.crawler.service.reportit_api import ReportItService, ReportNotF
 from py_reportit.shared.repository.report import ReportRepository
 from py_reportit.shared.repository.report_answer import ReportAnswerRepository
 from py_reportit.crawler.post_processors.abstract_pp import PostProcessorDispatcher
-from py_reportit.crawler.util.reportit_utils import generate_random_times_between, positions_are_rougly_equal, pretty_format_time, to_utc
+from py_reportit.crawler.util.reportit_utils import filter_pp, generate_random_times_between, positions_are_rougly_equal, pretty_format_time, to_utc
 
 logger = get_task_logger(__name__)
 
@@ -87,6 +87,8 @@ def chained_crawl(
 
     chained_crawl.apply_async([popped_ids_and_crawl_times, stop_at_lat, stop_at_lon], eta=to_utc(next_task_execution_time))
 
+    run_post_processors.delay(immediate_run=True)
+
 @shared_task(name="tasks.launch_chained_crawl", base=DBTask, bind=True)
 @inject
 def launch_chained_crawl(
@@ -120,9 +122,9 @@ def schedule_crawl(offset_minutes_min: int, offset_minutes_max: int) -> None:
 
 @shared_task(name="tasks.post_processors", base=DBTask, bind=True)
 @inject
-def run_post_processors(self, pp_dispatcher: PostProcessorDispatcher = Provide["post_processor_dispatcher"]) -> None:
-    logger.info("Running post processors")
+def run_post_processors(self, immediate_run: bool = False, pp_dispatcher: PostProcessorDispatcher = Provide["post_processor_dispatcher"]) -> None:
+    logger.info(f"Running post processors (immediate run: {immediate_run})")
 
-    for pp in pp_dispatcher.post_processors:
+    for pp in filter_pp(pp_dispatcher.post_processors, immediate_run):
         logger.info(f"Running post processor {pp}")
         pp.process(self.session, []) # TODO: Provide new or updated reports (not necessary with current post processors)

@@ -12,6 +12,8 @@ logger = logging.getLogger(f"py_reportit.{__name__}")
 
 class Geocode(PostProcessor):
 
+    immediate_run = True
+
     def process(self, session: Session, new_or_updated_reports: list[Report]):
         if not int(self.config.get("GEOCODE_ACTIVE")):
             logger.info("Geocoding not active, skipping")

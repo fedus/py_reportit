@@ -12,6 +12,8 @@ from py_reportit.shared.repository.report import ReportRepository
 
 class PostProcessor(ABC):
 
+    immediate_run = False
+
     def __init__(self,
                  config: dict,
                  api_service: ReportItService,

@@ -1,7 +1,7 @@
 from dependency_injector import containers, providers
 
 from py_reportit.shared.config import config
-from py_reportit.shared.config.db import Database, get_session
+from py_reportit.shared.config.db import Database
 from py_reportit.shared.config.requests_session import get_requests_session
 from py_reportit.shared.repository.report import ReportRepository
 from py_reportit.shared.repository.meta import MetaRepository
@@ -11,9 +11,11 @@ from py_reportit.crawler.service.reportit_api import ReportItService
 from py_reportit.crawler.service.geocoder import GeocoderService
 from py_reportit.crawler.service.photo import PhotoService
 from py_reportit.crawler.post_processors.abstract_pp import PostProcessorDispatcher
-from py_reportit.crawler.post_processors import post_processors
+from py_reportit.crawler.post_processors.twitter_pp import Twitter
 from py_reportit.crawler.post_processors.geocode_pp import Geocode
 
+
+post_processors = [Geocode, Twitter]
 
 class Container(containers.DeclarativeContainer):
     config = providers.Configuration()

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 import pytz
 
@@ -6,6 +8,7 @@ from typing import Callable
 from unicodedata import normalize
 from datetime import datetime, timedelta
 from random import choices
+from py_reportit.crawler.post_processors import abstract_pp
 
 from py_reportit.shared.model.answer_meta import ReportAnswerMeta
 from py_reportit.shared.model.answer_meta_tweet import AnswerMetaTweet
@@ -90,6 +93,9 @@ def string_to_crontab_kwargs(crontab_str: str) -> dict:
 
 class CrontabParseException(Exception):
     pass
+
+def filter_pp(pps: list[abstract_pp.PostProcessor], immediate_run: bool = False) -> list[abstract_pp.PostProcessor]:
+    return list(filter(lambda pp: pp.immediate_run == immediate_run, pps))
 
 pretty_format_time: Callable[[datetime], str] = lambda dtime: dtime.strftime("%Y/%m/%d %H:%M:%S")
 
