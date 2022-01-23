@@ -41,9 +41,6 @@ def chained_crawl(
         if positions_are_rougly_equal(fetched_report.latitude, fetched_report.longitude, stop_at_lat, stop_at_lon, 5):
             logger.info(f"Stop condition hit at report with id {current_report_id}, not queueing next crawl")
             return
-        elif len(ids_and_crawl_times) == 1:
-            logger.info(f"No more reports in queue, crawl finished without hitting stop condition.")
-            return
 
     except ReportNotFoundException:
         logger.info(f"No report found with id {current_report_id}, skipping.")
@@ -54,10 +51,16 @@ def chained_crawl(
     except:
         logger.error(f"Error while trying to fetch report with id {current_report_id}, skipping", exc_info=True)
 
+    if len(ids_and_crawl_times) == 1:
+        logger.info(f"No more reports in queue, crawl finished without hitting stop condition.")
+        return
+
     popped_ids_and_crawl_times = ids_and_crawl_times[1:]
     next_task_execution_report_id = popped_ids_and_crawl_times[0][0]
     next_task_execution_time = popped_ids_and_crawl_times[0][1]
+
     logger.info(f"{len(popped_ids_and_crawl_times)} crawls remaining, scheduling crawl for report id {next_task_execution_report_id} at {format_time(next_task_execution_time)}")
+
     chained_crawl.apply_async([popped_ids_and_crawl_times, stop_at_lat, stop_at_lon], eta=to_utc(next_task_execution_time))
 
     return

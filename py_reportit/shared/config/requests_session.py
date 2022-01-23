@@ -12,7 +12,7 @@ def get_requests_session(config: dict) -> Iterable[Session]:
         logger.debug("Opening requests-session")
 
         if int(config.get("USE_PROXY", 0)):
-            logger.debug("Setting proxy ...")
+            logger.debug("Setting proxy and disabling SSL cert verification ...")
             proxy_url = Template(config.get("PROXY_URL")).substitute({
                 "PROXY_SCHEME": config.get("PROXY_SCHEME"),
                 "PROXY_USER": config.get("PROXY_USER"),
@@ -22,6 +22,7 @@ def get_requests_session(config: dict) -> Iterable[Session]:
             })
             proxies = { "http": proxy_url, "https": proxy_url }
             session.proxies.update(proxies)
+            session.verify = False
         else:
             logger.info(f"Current User-Agent: {session.headers['User-Agent']}")
         yield session
