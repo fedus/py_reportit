@@ -1,20 +1,25 @@
 from __future__ import annotations
 
-from datetime import datetime
-from dependency_injector.wiring import inject, Provide
+import sys
+
+from datetime import datetime, timedelta
+from dependency_injector.wiring import inject, Provide, Provider
 from celery import shared_task
 from celery.utils.log import get_task_logger
 from requests.exceptions import RequestException, Timeout
+from dependency_injector.providers import Resource
 
+import py_reportit.crawler.service.crawler as crawler
 from py_reportit.crawler.service.photo import PhotoService
 from py_reportit.crawler.service.reportit_api import ReportItService, ReportNotFoundException
 from py_reportit.shared.repository.report import ReportRepository
 from py_reportit.shared.repository.report_answer import ReportAnswerRepository
-from py_reportit.crawler.util.reportit_utils import positions_are_rougly_equal, format_time, to_utc
+from py_reportit.crawler.post_processors.abstract_pp import PostProcessorDispatcher
+from py_reportit.crawler.util.reportit_utils import generate_random_times_between, positions_are_rougly_equal, format_time, to_utc
 
 logger = get_task_logger(__name__)
 
-@shared_task
+@shared_task(name="tasks.chained_crawl")
 @inject
 def chained_crawl(
     ids_and_crawl_times: list[tuple[int, datetime]],
@@ -63,4 +68,45 @@ def chained_crawl(
 
     chained_crawl.apply_async([popped_ids_and_crawl_times, stop_at_lat, stop_at_lon], eta=to_utc(next_task_execution_time))
 
-    return
+@shared_task(name="tasks.launch_chained_crawl")
+@inject
+def launch_chained_crawl(
+    crawler: crawler.CrawlerService = Provide['crawler_service'],
+    session_provider: Provider[Resource] = Provide['session.provider'],
+    requests_session_provider: Provider[Resource] = Provide['requests_session.provider'],
+) -> None:
+    logger.info(f"Starting crawl scheduler at {datetime.now()}")
+
+    try:
+        crawler.crawl()
+        session_provider.shutdown()
+        requests_session_provider.shutdown()
+    except:
+        logger.error("Error during crawl: ", sys.exc_info()[0])
+
+    logger.info("Crawl scheduler finished")
+
+@shared_task(name="tasks.schedule_crawl")
+def schedule_crawl(offset_minutes_min: int, offset_minutes_max: int) -> None:
+    logger.debug(f"Generating start time for next crawl, offset min: {offset_minutes_min} max: {offset_minutes_max}")
+
+    current_base_time = datetime.now()
+    earliest_start_time = current_base_time + timedelta(minutes=offset_minutes_min)
+    latest_start_time = current_base_time + timedelta(minutes=offset_minutes_max)
+
+    logger.debug(f"Generating random start time between {format_time(earliest_start_time)} and {format_time(latest_start_time)}")
+
+    next_crawl_time = generate_random_times_between(earliest_start_time, latest_start_time, 1)[0]
+
+    logger.info(f"Crawl scheduled to begin at {format_time(next_crawl_time)} (offsets were min: {offset_minutes_min} max: {offset_minutes_max})")
+
+    launch_chained_crawl.apply_async(eta=to_utc(next_crawl_time))
+
+@shared_task(name="tasks.post_processors")
+@inject
+def run_post_processors(pp_dispatcher: PostProcessorDispatcher = Provide["post_processor_dispatcher"]) -> None:
+    logger.info("Running post processors")
+
+    for pp in pp_dispatcher.post_processors:
+        logger.info(f"Running post processor {pp}")
+        pp.process([]) # TODO: Provide new or updated reports (not necessary with current post processors)

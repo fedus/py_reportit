@@ -5,6 +5,8 @@ from datetime import datetime
 
 from dependency_injector.wiring import Provide, inject
 from dependency_injector.providers import Resource
+from celery.schedules import crontab
+from py_reportit.crawler.util.reportit_utils import string_to_crontab_kwargs
 
 from py_reportit.shared.config.container import build_container_for_crawler
 from py_reportit.crawler.celery.celery import create_celery_app
@@ -78,6 +80,24 @@ logger.setLevel(config.get("LOG_LEVEL"))
 
 
 celery_app = create_celery_app(config)
+
+crontab_args_schedule_crawl = string_to_crontab_kwargs(config.get("START_CRAWL_SCHEDULING_AT"))
+logger.info(f"Daily scheduled crawl crontab args: {crontab_args_schedule_crawl}")
+
+crontab_args_post_processors = string_to_crontab_kwargs(config.get("START_POST_PROCESSORS_AT"))
+logger.info(f"Daily post processor run crontab args: {crontab_args_post_processors}")
+
+celery_app.conf.beat_schedule = {
+    'daily_randomize_schedule': {
+        'task': 'tasks.schedule_crawl',
+        'schedule': crontab(**crontab_args_schedule_crawl),
+        'args': [int(config.get("CRAWL_FIRST_OFFSET_MINUTES_MIN")), int(config.get("CRAWL_FIRST_OFFSET_MINUTES_MAX"))]
+    },
+    'daily_post_processor_run': {
+        'task': 'tasks.post_processors',
+        'schedule': crontab(**crontab_args_post_processors),
+    },
+}
 
 def run_app():
     app = App()

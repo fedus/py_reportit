@@ -79,6 +79,18 @@ def to_utc(dtime: datetime) -> datetime:
     lu_dt = lu_tz.localize(dtime)
     return lu_dt.astimezone(pytz.UTC)
 
+def string_to_crontab_kwargs(crontab_str: str) -> dict:
+    ordered_celery_crontab_kwargs = ["minute", "hour", "day_of_month", "month_of_year", "day_of_week"]
+    crontab_str_split = crontab_str.split(" ")
+
+    if len(crontab_str_split) != 5:
+        raise CrontabParseException("Crontab string does not have expected number of arguments")
+
+    return dict(zip(ordered_celery_crontab_kwargs, crontab_str_split))
+
+class CrontabParseException(Exception):
+    pass
+
 format_time: Callable[[datetime], str] = lambda dtime: dtime.strftime("%Y/%m/%d %H:%M:%S")
 
 # The following constants come from python-twitter

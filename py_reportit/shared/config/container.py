@@ -94,7 +94,6 @@ class Container(containers.DeclarativeContainer):
     crawler_service = providers.Factory(
         CrawlerService,
         config=config,
-        post_processor_dispatcher=post_processor_dispatcher,
         api_service=reportit_service,
         photo_service=photo_service,
         report_repository=report_repository,

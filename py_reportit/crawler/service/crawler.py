@@ -1,12 +1,12 @@
+from __future__ import annotations
+
 import logging, sys, random
 
 from datetime import datetime, timedelta
-from time import sleep
 from requests.models import HTTPError
 
 from py_reportit.crawler.celery.tasks import chained_crawl
 from py_reportit.shared.model.report import Report
-from py_reportit.crawler.post_processors.abstract_pp import PostProcessorDispatcher
 from py_reportit.shared.repository.report import ReportRepository
 from py_reportit.shared.repository.meta import MetaRepository
 from py_reportit.shared.repository.report_answer import ReportAnswerRepository
@@ -21,7 +21,6 @@ class CrawlerService:
 
     def __init__(self,
                  config: dict,
-                 post_processor_dispatcher: PostProcessorDispatcher,
                  api_service: ReportItService,
                  photo_service: PhotoService,
                  report_repository: ReportRepository,
@@ -29,7 +28,6 @@ class CrawlerService:
                  report_answer_repository: ReportAnswerRepository,
                  ):
         self.config = config
-        self.post_processors = post_processor_dispatcher.post_processors
         self.report_repository = report_repository
         self.meta_repository = meta_repository
         self.report_answer_repository = report_answer_repository
@@ -129,27 +127,6 @@ class CrawlerService:
 
             chained_crawl.apply_async([ids_and_crawl_times, last_lat, last_lon], eta=to_utc(first_task_execution_time))
 
-            #logger.info(f"{len(reports)} actual reports fetched")
-            #new_or_updated_reports = self.filter_updated_reports(recent_reports, reports)
-
-        except KeyboardInterrupt:
-            raise
-
         except:
             logger.error("Unexpected error during crawl: ", sys.exc_info()[0])
             return
-
-        while False:
-            try:
-                sleep(1)
-            except KeyboardInterrupt:
-                break
-
-        """
-        logger.info("%d new or modified reports found", len(new_or_updated_reports))
-
-        logger.info("Running post processors")
-        for pp in self.post_processors:
-            logger.info(f"Running post processor {pp}")
-            pp.process(new_or_updated_reports)
-        """
