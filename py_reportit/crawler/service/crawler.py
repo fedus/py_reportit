@@ -3,11 +3,16 @@ from __future__ import annotations
 import logging, sys, random
 
 from datetime import datetime, timedelta
+from typing import Optional
 from sqlalchemy.orm import Session
 from requests.models import HTTPError
 
 from py_reportit.crawler.celery.tasks import chained_crawl
+from py_reportit.shared.model.crawl_item import CrawlItem
+from py_reportit.shared.model.crawl import Crawl
 from py_reportit.shared.model.report import Report
+from py_reportit.shared.repository.crawl import CrawlRepository
+from py_reportit.shared.repository.crawl_item import CrawlItemRepository
 from py_reportit.shared.repository.report import ReportRepository
 from py_reportit.shared.repository.meta import MetaRepository
 from py_reportit.shared.repository.report_answer import ReportAnswerRepository
@@ -27,6 +32,8 @@ class CrawlerService:
                  report_repository: ReportRepository,
                  meta_repository: MetaRepository,
                  report_answer_repository: ReportAnswerRepository,
+                 crawl_repository: CrawlRepository,
+                 crawl_item_repository: CrawlItemRepository,
                  ):
         self.config = config
         self.report_repository = report_repository
@@ -34,12 +41,58 @@ class CrawlerService:
         self.report_answer_repository = report_answer_repository
         self.api_service = api_service
         self.photo_service = photo_service
+        self.crawl_repository = crawl_repository
+        self.crawl_item_repository = crawl_item_repository
 
     @staticmethod
     def filter_updated_reports(existing_reports: list[Report], new_reports: list[Report]) -> list[Report]:
         get_existing_report = lambda new_report: next(filter(lambda existing_report: existing_report.id == new_report.id, existing_reports), None)
         report_is_new_or_updated = lambda new_report: get_existing_report(new_report).updated_at < new_report.updated_at if get_existing_report(new_report) else True
         return list(filter(lambda report: report_is_new_or_updated(report), new_reports))
+
+    def get_active_crawl(self, session: Session) -> Optional[Crawl]:
+        crawls = self.crawl_repository.get_by(session, Crawl.finished == False)
+
+        if crawls and len(crawls) > 1:
+            logger.error(f"More than one active crawl found ({len(crawls)})! Returning empty list.")
+            logger.debug(f"Returned crawls: {crawls}")
+            return None
+
+        return crawls[0] if crawls else None
+
+
+    def create_and_persist_new_crawl(
+        self,
+        session: Session,
+        ids_and_crawl_times: list[tuple[int, datetime]],
+        scheduled_at: datetime,
+        stop_at_lat: Optional[float],
+        stop_at_lon: Optional[float],
+    ) -> Crawl:
+        crawl = Crawl(
+            scheduled_at=scheduled_at,
+            stop_at_lat=stop_at_lat,
+            stop_at_lon=stop_at_lon,
+        )
+
+        crawl_items = list(
+            map(
+                lambda id_dt: CrawlItem(
+                    report_id=id_dt[0],
+                    scheduled_for=id_dt[1]
+                ),
+                ids_and_crawl_times
+            )
+        )
+
+        crawl.items = crawl_items
+
+        self.crawl_repository.create(session, crawl)
+
+        return crawl
+
+    def get_next_waiting_crawl_item(self, session, crawl: Crawl) -> Optional[CrawlItem]:
+        return self.crawl_item_repository.get_next_waiting(session, crawl.id)
 
     def get_new_and_deleted_report_count(self, pre_crawl_ids: list[int], crawled_ids: list[int]) -> tuple[int]:
         added_count = len(list(set(crawled_ids) - set(pre_crawl_ids)))
@@ -73,8 +126,6 @@ class CrawlerService:
             logger.debug(f"Id {id_and_crawl_time[0]} will be crawled at {pretty_time}")
 
     def crawl(self, session: Session):
-        #new_or_updated_reports = []
-
         logger.info("Fetching existing recent reports from database ...")
         recent_reports = self.get_recent_reports(session)
 
@@ -119,11 +170,31 @@ class CrawlerService:
         try:
             logger.info(f"Processing {len(relevant_combined_ids)} reports, of which {amount_remaining} existing reports")
 
-            first_task_execution_time = ids_and_crawl_times[0][1]
+            logger.info("Persisting crawl planning to database ...")
+
+            crawl = self.create_and_persist_new_crawl(
+                session,
+                ids_and_crawl_times,
+                datetime.now(),
+                last_lat,
+                last_lon
+            )
+
+            next_crawl_item = self.get_next_waiting_crawl_item(session, crawl)
+
+            if not next_crawl_item:
+                logger.error("Next crawl item not found! Aborting.")
+                return
+
+            first_task_execution_time = next_crawl_item.scheduled_for
 
             logger.info(f"Queueing first crawl task, ETA {pretty_format_time(first_task_execution_time)}")
 
-            chained_crawl.apply_async([ids_and_crawl_times, last_lat, last_lon], eta=to_utc(first_task_execution_time))
+            task = chained_crawl.apply_async(eta=to_utc(first_task_execution_time))
+
+            crawl.current_task_id = task.id
+
+            session.commit()
 
         except:
             logger.error("Unexpected error during crawl: ", sys.exc_info()[0])

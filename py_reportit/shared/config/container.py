@@ -3,6 +3,8 @@ from dependency_injector import containers, providers
 from py_reportit.shared.config import config
 from py_reportit.shared.config.db import Database
 from py_reportit.shared.config.requests_session import get_requests_session
+from py_reportit.shared.repository.crawl import CrawlRepository
+from py_reportit.shared.repository.crawl_item import CrawlItemRepository
 from py_reportit.shared.repository.report import ReportRepository
 from py_reportit.shared.repository.meta import MetaRepository
 from py_reportit.shared.repository.report_answer import ReportAnswerRepository
@@ -39,6 +41,8 @@ class Container(containers.DeclarativeContainer):
     report_repository = providers.Factory(ReportRepository)
     meta_repository = providers.Factory(MetaRepository)
     report_answer_repository = providers.Factory(ReportAnswerRepository)
+    crawl_repository = providers.Factory(CrawlRepository)
+    crawl_item_repository = providers.Factory(CrawlItemRepository)
 
     # Services
     reportit_service = providers.Factory(ReportItService, config=config, requests_session=requests_session)
@@ -99,6 +103,8 @@ class Container(containers.DeclarativeContainer):
         report_repository=report_repository,
         meta_repository=meta_repository,
         report_answer_repository=report_answer_repository,
+        crawl_repository=crawl_repository,
+        crawl_item_repository=crawl_item_repository
     )
 
 def build_container_for_crawler() -> Container:

@@ -29,7 +29,7 @@ class App:
             [int(self.config.get("CRAWL_FIRST_OFFSET_MINUTES_MIN")), int(self.config.get("CRAWL_FIRST_OFFSET_MINUTES_MAX"))]
         )
 
-        logger.info("One-off scrawl scheduling finished.")
+        logger.info("One-off crawl scheduling finished.")
 
     def run(self):
         if self.config.get("SPECIAL_RUN_MODE") == "ONE_OFF_CRAWL":

@@ -12,6 +12,7 @@ from requests.exceptions import RequestException, Timeout
 import py_reportit.crawler.service.crawler as crawler
 from py_reportit.crawler.service.photo import PhotoService
 from py_reportit.crawler.service.reportit_api import ReportItService, ReportNotFoundException
+from py_reportit.shared.model.crawl_item import CrawlItemState
 from py_reportit.shared.repository.report import ReportRepository
 from py_reportit.shared.repository.report_answer import ReportAnswerRepository
 from py_reportit.crawler.post_processors.abstract_pp import PostProcessorDispatcher
@@ -27,29 +28,42 @@ class DBTask(Task):
 
     def after_return(self, *args, **kwargs):
         if self._session is not None:
+            logger.debug("Closing session")
             self._session.close()
 
     @property
     def session(self):
         if self._session is None:
+            logger.debug("Opening session ...")
             self._session = self.session_maker()
 
+        logger.debug("Returning session")
         return self._session
 
 @shared_task(name="tasks.chained_crawl", base=DBTask, bind=True)
 @inject
 def chained_crawl(
     self,
-    ids_and_crawl_times: list[tuple[int, datetime]],
-    stop_at_lat: float,
-    stop_at_lon: float,
     config: dict = Provide['config'],
+    crawler: crawler.CrawlerService = Provide['crawler_service'],
     api_service: ReportItService = Provide['reportit_service'],
     photo_service: PhotoService = Provide['photo_service'],
     report_repository: ReportRepository = Provide['report_repository'],
     report_answer_repository: ReportAnswerRepository = Provide['report_answer_repository']
 ) -> None:
-    current_report_id = ids_and_crawl_times[0][0]
+    current_crawl = crawler.get_active_crawl(self.session)
+
+    if not current_crawl:
+        logger.error("Worker found no active crawl! Aborting")
+        return
+
+    current_crawl_item = crawler.get_next_waiting_crawl_item(self.session, current_crawl)
+
+    if not current_crawl_item:
+        logger.error(f"Expected crawl item to process, but none found. Crawl id: {current_crawl.id}. Aborting")
+        return
+
+    current_report_id = current_crawl_item.report_id
 
     logger.info(f"Processing report with id {current_report_id}")
 
@@ -59,33 +73,60 @@ def chained_crawl(
         report_repository.update_or_create(self.session, fetched_report)
         report_answer_repository.update_or_create_all(self.session, fetched_report.answers)
 
+        current_crawl_item.report_found = True
+        current_crawl_item.state = CrawlItemState.SUCCESS
+
         logger.info(f"Successfully processed report with id {current_report_id}, title: {fetched_report.title}")
 
-        if positions_are_rougly_equal(fetched_report.latitude, fetched_report.longitude, stop_at_lat, stop_at_lon, 5):
+        if positions_are_rougly_equal(
+            fetched_report.latitude,
+            fetched_report.longitude,
+            current_crawl.stop_at_lat,
+            current_crawl.stop_at_lon,
+            5
+        ):
             logger.info(f"Stop condition hit at report with id {current_report_id}, not queueing next crawl")
+
+            current_crawl_item.stop_condition_hit = True
+            self.session.commit()
+
             return
 
     except ReportNotFoundException:
+        current_crawl_item.report_found = False
+        current_crawl_item.state = CrawlItemState.SUCCESS
         logger.info(f"No report found with id {current_report_id}, skipping.")
     except Timeout:
-        logger.warn(f"Retrieval of report with id {current_report_id} timed out after {config('FETCH_REPORTS_TIMEOUT_SECONDS')} seconds, skipping")
+        current_crawl_item.state = CrawlItemState.FAILURE
+        logger.warn(f"Retrieval of report with id {current_report_id} timed out after {config.get('FETCH_REPORTS_TIMEOUT_SECONDS')} seconds, skipping")
     except RequestException:
+        current_crawl_item.state = CrawlItemState.FAILURE
         logger.warn(f"Retrieval of report with id {current_report_id} failed, skipping", exc_info=True)
     except:
+        current_crawl_item.state = CrawlItemState.FAILURE
         logger.error(f"Error while trying to fetch report with id {current_report_id}, skipping", exc_info=True)
 
-    if len(ids_and_crawl_times) == 1:
+    current_crawl_item.stop_condition_hit = False
+    self.session.commit()
+
+    next_crawl_item = crawler.get_next_waiting_crawl_item(self.session, current_crawl)
+
+    if not next_crawl_item:
+        current_crawl.current_task_id = None
+        self.session.commit()
         logger.info(f"No more reports in queue, crawl finished without hitting stop condition.")
         return
 
-    popped_ids_and_crawl_times = ids_and_crawl_times[1:]
-    next_task_execution_report_id = popped_ids_and_crawl_times[0][0]
-    # The following is a crutch since the datetime format seems to get lost sometimes during de/serialization in Celery
-    next_task_execution_time = popped_ids_and_crawl_times[0][1] if isinstance(popped_ids_and_crawl_times[0][1], datetime) else datetime.fromisoformat(popped_ids_and_crawl_times[0][1])
+    next_task_execution_report_id = next_crawl_item.report_id
+    next_task_execution_time = next_crawl_item.scheduled_for
 
-    logger.info(f"{len(popped_ids_and_crawl_times)} crawls remaining, scheduling crawl for report id {next_task_execution_report_id} at {pretty_format_time(next_task_execution_time)}")
+    logger.info(f"{len(current_crawl.waiting_items)} crawls remaining, scheduling crawl for report id {next_task_execution_report_id} at {pretty_format_time(next_task_execution_time)}")
 
-    chained_crawl.apply_async([popped_ids_and_crawl_times, stop_at_lat, stop_at_lon], eta=to_utc(next_task_execution_time))
+    next_task = chained_crawl.apply_async(eta=to_utc(next_task_execution_time))
+
+    current_crawl.current_task_id = next_task.id
+
+    self.session.commit()
 
     run_post_processors.delay(immediate_run=True)
 
