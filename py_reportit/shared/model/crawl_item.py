@@ -7,8 +7,11 @@ from py_reportit.shared.model.orm_base import Base
 
 class CrawlItemState(Enum):
     WAITING = auto()
+    PROCESSING = auto()
+    QUEUED = auto()
     SUCCESS = auto()
     FAILURE = auto()
+    SKIPPED = auto()
 
 class CrawlItem(Base):
 

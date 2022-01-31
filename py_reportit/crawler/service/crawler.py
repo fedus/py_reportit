@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from requests.models import HTTPError
 
 from py_reportit.crawler.celery.tasks import chained_crawl
-from py_reportit.shared.model.crawl_item import CrawlItem
+from py_reportit.shared.model.crawl_item import CrawlItem, CrawlItemState
 from py_reportit.shared.model.crawl import Crawl
 from py_reportit.shared.model.report import Report
 from py_reportit.shared.repository.crawl import CrawlRepository
@@ -91,8 +91,16 @@ class CrawlerService:
 
         return crawl
 
-    def get_next_waiting_crawl_item(self, session, crawl: Crawl) -> Optional[CrawlItem]:
+    def get_next_waiting_crawl_item(self, session: Session, crawl: Crawl) -> Optional[CrawlItem]:
         return self.crawl_item_repository.get_next_waiting(session, crawl.id)
+
+    def set_skip_remaining_items(self, session: Session, last_processed_crawl_item: CrawlItem) -> None:
+        self.crawl_item_repository.update_many(
+            session,
+            { "state": CrawlItemState.SKIPPED },
+            CrawlItem.crawl_id == last_processed_crawl_item.crawl_id,
+            CrawlItem.state == CrawlItemState.WAITING
+        )
 
     def get_new_and_deleted_report_count(self, pre_crawl_ids: list[int], crawled_ids: list[int]) -> tuple[int]:
         added_count = len(list(set(crawled_ids) - set(pre_crawl_ids)))

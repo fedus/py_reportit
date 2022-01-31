@@ -63,6 +63,9 @@ def chained_crawl(
         logger.error(f"Expected crawl item to process, but none found. Crawl id: {current_crawl.id}. Aborting")
         return
 
+    current_crawl_item.state = CrawlItemState.PROCESSING
+    self.session.commit()
+
     current_report_id = current_crawl_item.report_id
 
     logger.info(f"Processing report with id {current_report_id}")
@@ -88,6 +91,7 @@ def chained_crawl(
             logger.info(f"Stop condition hit at report with id {current_report_id}, not queueing next crawl")
 
             current_crawl_item.stop_condition_hit = True
+            crawler.set_skip_remaining_items(self.session, current_crawl_item)
             self.session.commit()
 
             return
