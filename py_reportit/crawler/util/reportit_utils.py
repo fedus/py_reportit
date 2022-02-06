@@ -66,15 +66,8 @@ def get_last_tweet_id(report: Report) -> str:
 
     return None
 
-# Adapted from https://www.geeksforgeeks.org/python-generate-k-random-dates-between-two-other-dates/
 def generate_random_times_between(start: Arrow, end: Arrow, amount: int) -> list[Arrow]:
-    result_datetimes = [start]
-
-    current_datetime = start
-
-    while current_datetime != end:
-        current_datetime += timedelta(seconds=1)
-        result_datetimes.append(current_datetime)
+    result_datetimes = list(Arrow.range('second', start, end))
 
     return sorted(choices(result_datetimes, k=amount))
 
