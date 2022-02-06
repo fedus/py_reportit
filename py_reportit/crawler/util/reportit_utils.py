@@ -8,8 +8,9 @@ from typing import Callable
 from unicodedata import normalize
 from datetime import datetime, timedelta
 from random import choices
-from py_reportit.crawler.post_processors import abstract_pp
+from arrow import Arrow
 
+from py_reportit.crawler.post_processors import abstract_pp
 from py_reportit.shared.model.answer_meta import ReportAnswerMeta
 from py_reportit.shared.model.answer_meta_tweet import AnswerMetaTweet
 from py_reportit.shared.model.report_answer import ReportAnswer
@@ -66,7 +67,7 @@ def get_last_tweet_id(report: Report) -> str:
     return None
 
 # Adapted from https://www.geeksforgeeks.org/python-generate-k-random-dates-between-two-other-dates/
-def generate_random_times_between(start: datetime, end: datetime, amount: int) -> list[datetime]:
+def generate_random_times_between(start: Arrow, end: Arrow, amount: int) -> list[Arrow]:
     result_datetimes = [start]
 
     current_datetime = start

@@ -1,6 +1,6 @@
 import logging
 
-from datetime import datetime
+from datetime import datetime, tzinfo
 from celery import Celery
 
 from dependency_injector.wiring import Provide, inject
@@ -21,8 +21,8 @@ class App:
         self.config = config
 
     @inject
-    def execute_crawler(self):
-        logger.info(f"Scheduling one-off crawl at {datetime.now()}")
+    def execute_crawler(self, timezone: tzinfo = Provide[Container.timezone]):
+        logger.info(f"Scheduling one-off crawl at {datetime.now(timezone)}")
 
         self.celery_app.send_task(
             "tasks.schedule_crawl",

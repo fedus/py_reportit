@@ -1,5 +1,7 @@
 from dependency_injector import containers, providers
 
+from pytz import timezone as pytz_timezone
+
 from py_reportit.shared.config import config
 from py_reportit.shared.config.db import Database
 from py_reportit.shared.config.requests_session import get_requests_session
@@ -36,6 +38,8 @@ class Container(containers.DeclarativeContainer):
     sessionmaker = providers.Singleton(db.provided.sqlalchemy_sessionmaker)
 
     requests_session = providers.Resource(get_requests_session, config=config)
+
+    timezone = providers.Factory(pytz_timezone, zone=config.TIMEZONE)
 
     # Repositories
     report_repository = providers.Factory(ReportRepository)
@@ -104,7 +108,8 @@ class Container(containers.DeclarativeContainer):
         meta_repository=meta_repository,
         report_answer_repository=report_answer_repository,
         crawl_repository=crawl_repository,
-        crawl_item_repository=crawl_item_repository
+        crawl_item_repository=crawl_item_repository,
+        timezone=timezone
     )
 
 def build_container_for_crawler() -> Container:

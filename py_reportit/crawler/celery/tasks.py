@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, tzinfo
 from dependency_injector.wiring import inject, Provide
 from celery import shared_task, Task
 from celery.utils.log import get_task_logger
@@ -16,7 +16,7 @@ from py_reportit.shared.model.crawl_item import CrawlItemState
 from py_reportit.shared.repository.report import ReportRepository
 from py_reportit.shared.repository.report_answer import ReportAnswerRepository
 from py_reportit.crawler.post_processors.abstract_pp import PostProcessorDispatcher
-from py_reportit.crawler.util.reportit_utils import filter_pp, generate_random_times_between, positions_are_rougly_equal, pretty_format_time, to_utc
+from py_reportit.crawler.util.reportit_utils import filter_pp, generate_random_times_between, positions_are_rougly_equal, pretty_format_time
 
 logger = get_task_logger(__name__)
 
@@ -69,6 +69,7 @@ def chained_crawl(
     current_report_id = current_crawl_item.report_id
 
     logger.info(f"Processing report with id {current_report_id}")
+    logger.debug(f"Scheduled for: {current_crawl_item.scheduled_for}")
 
     try:
         fetched_report = api_service.get_report_with_answers(current_report_id, photo_service.process_base64_photo_if_not_downloaded_yet)
@@ -126,7 +127,7 @@ def chained_crawl(
 
     logger.info(f"{len(current_crawl.waiting_items)} crawls remaining, scheduling crawl for report id {next_task_execution_report_id} at {pretty_format_time(next_task_execution_time)}")
 
-    next_task = chained_crawl.apply_async(eta=to_utc(next_task_execution_time))
+    next_task = chained_crawl.apply_async(eta=next_task_execution_time)
 
     current_crawl.current_task_id = next_task.id
 
@@ -139,8 +140,9 @@ def chained_crawl(
 def launch_chained_crawl(
     self,
     crawler: crawler.CrawlerService = Provide['crawler_service'],
+    timezone: tzinfo = Provide['timezone']
 ) -> None:
-    logger.info(f"Starting crawl scheduler at {datetime.now()}")
+    logger.info(f"Starting crawl scheduler at {datetime.now(timezone)}")
 
     try:
         crawler.crawl(self.session)
@@ -150,10 +152,11 @@ def launch_chained_crawl(
     logger.info("Crawl scheduler finished")
 
 @shared_task(name="tasks.schedule_crawl")
-def schedule_crawl(offset_minutes_min: int, offset_minutes_max: int) -> None:
+@inject
+def schedule_crawl(offset_minutes_min: int, offset_minutes_max: int, timezone: tzinfo = Provide["timezone"]) -> None:
     logger.debug(f"Generating start time for next crawl, offset min: {offset_minutes_min} max: {offset_minutes_max}")
 
-    current_base_time = datetime.now()
+    current_base_time = datetime.now(timezone)
     earliest_start_time = current_base_time + timedelta(minutes=offset_minutes_min)
     latest_start_time = current_base_time + timedelta(minutes=offset_minutes_max)
 
@@ -163,7 +166,7 @@ def schedule_crawl(offset_minutes_min: int, offset_minutes_max: int) -> None:
 
     logger.info(f"Crawl scheduled to begin at {pretty_format_time(next_crawl_time)} (offsets were min: {offset_minutes_min} max: {offset_minutes_max})")
 
-    launch_chained_crawl.apply_async(eta=to_utc(next_crawl_time))
+    launch_chained_crawl.apply_async(eta=next_crawl_time)
 
 @shared_task(name="tasks.post_processors", base=DBTask, bind=True)
 @inject

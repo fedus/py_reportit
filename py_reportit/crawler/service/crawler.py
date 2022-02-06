@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import logging, sys, random
 
-from datetime import datetime, timedelta
+from arrow import Arrow
+from datetime import datetime, timedelta, tzinfo
 from typing import Optional
 from sqlalchemy.orm import Session
 from requests.models import HTTPError
@@ -34,6 +35,7 @@ class CrawlerService:
                  report_answer_repository: ReportAnswerRepository,
                  crawl_repository: CrawlRepository,
                  crawl_item_repository: CrawlItemRepository,
+                 timezone: tzinfo
                  ):
         self.config = config
         self.report_repository = report_repository
@@ -43,6 +45,7 @@ class CrawlerService:
         self.photo_service = photo_service
         self.crawl_repository = crawl_repository
         self.crawl_item_repository = crawl_item_repository
+        self.timezone = timezone
 
     @staticmethod
     def filter_updated_reports(existing_reports: list[Report], new_reports: list[Report]) -> list[Report]:
@@ -64,8 +67,8 @@ class CrawlerService:
     def create_and_persist_new_crawl(
         self,
         session: Session,
-        ids_and_crawl_times: list[tuple[int, datetime]],
-        scheduled_at: datetime,
+        ids_and_crawl_times: list[tuple[int, Arrow]],
+        scheduled_at: Arrow,
         stop_at_lat: Optional[float],
         stop_at_lon: Optional[float],
     ) -> Crawl:
@@ -118,20 +121,20 @@ class CrawlerService:
 
         return recent_reports
 
-    def generate_crawl_times(self, amount: int) -> list[datetime]:
+    def generate_crawl_times(self, amount: int) -> list[Arrow]:
         crawl_offset_minutes = random.randint(int(self.config.get("CRAWL_FIRST_OFFSET_MINUTES_MIN")), int(self.config.get("CRAWL_FIRST_OFFSET_MINUTES_MAX")))
         crawl_duration_minutes = random.randint(int(self.config.get("CRAWL_DURATION_MINUTES_MIN")), int(self.config.get("CRAWL_DURATION_MINUTES_MAX")))
-        crawl_start_time = datetime.now() + timedelta(minutes=crawl_offset_minutes)
+        crawl_start_time = Arrow.now(self.timezone) + timedelta(minutes=crawl_offset_minutes)
         crawl_end_time = crawl_start_time + timedelta(minutes=crawl_duration_minutes)
 
         logger.info(f"Generating {amount} crawl times from {pretty_format_time(crawl_start_time)} to {pretty_format_time(crawl_end_time)}. Offset: {crawl_offset_minutes} min, duration: {crawl_duration_minutes} min")
         return generate_random_times_between(crawl_start_time, crawl_end_time, amount)
 
     @staticmethod
-    def log_ids_and_crawl_times(ids_and_crawl_times: list[tuple[int, datetime]]) -> None:
+    def log_ids_and_crawl_times(ids_and_crawl_times: list[tuple[int, Arrow]]) -> None:
         for id_and_crawl_time in ids_and_crawl_times:
             pretty_time = pretty_format_time(id_and_crawl_time[1])
-            logger.debug(f"Id {id_and_crawl_time[0]} will be crawled at {pretty_time}")
+            logger.debug(f"Id {id_and_crawl_time[0]} will be crawled at {pretty_time} ({id_and_crawl_time[1]})")
 
     def crawl(self, session: Session):
         logger.info("Fetching existing recent reports from database ...")
@@ -183,7 +186,7 @@ class CrawlerService:
             crawl = self.create_and_persist_new_crawl(
                 session,
                 ids_and_crawl_times,
-                datetime.now(),
+                Arrow.now(self.timezone),
                 last_lat,
                 last_lon
             )
@@ -198,7 +201,7 @@ class CrawlerService:
 
             logger.info(f"Queueing first crawl task, ETA {pretty_format_time(first_task_execution_time)}")
 
-            task = chained_crawl.apply_async(eta=to_utc(first_task_execution_time))
+            task = chained_crawl.apply_async(eta=first_task_execution_time)
 
             crawl.current_task_id = task.id
 

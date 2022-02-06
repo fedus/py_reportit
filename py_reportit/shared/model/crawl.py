@@ -1,9 +1,10 @@
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy import Column, Integer, Numeric, DateTime, Unicode, select, not_, exists
+from sqlalchemy import Column, Integer, Numeric, Unicode, select, not_, exists
 
 from py_reportit.shared.model.orm_base import Base
 from py_reportit.shared.model.crawl_item import CrawlItem, CrawlItemState
+from py_reportit.shared.util.localized_arrow import LocalizedArrow
 
 
 class Crawl(Base):
@@ -11,7 +12,7 @@ class Crawl(Base):
     __tablename__ = 'crawl'
 
     id = Column(Integer, primary_key=True)
-    scheduled_at = Column(DateTime, nullable=False)
+    scheduled_at = Column(LocalizedArrow, nullable=False)
     items = relationship("CrawlItem", cascade="save-update, merge, delete, delete-orphan", uselist=True, backref="crawl")
     stop_at_lat = Column(Numeric(8,6), nullable=True)
     stop_at_lon = Column(Numeric(9,6), nullable=True)
