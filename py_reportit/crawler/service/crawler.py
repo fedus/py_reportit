@@ -19,7 +19,7 @@ from py_reportit.shared.repository.meta import MetaRepository
 from py_reportit.shared.repository.report_answer import ReportAnswerRepository
 from py_reportit.crawler.service.reportit_api import ReportItService
 from py_reportit.crawler.service.photo import PhotoService
-from py_reportit.crawler.util.reportit_utils import extract_ids, filter_reports_by_state, generate_random_times_between, pretty_format_time, to_utc
+from py_reportit.crawler.util.reportit_utils import extract_ids, filter_reports_by_state, generate_random_times_between, generate_time_graph, pretty_format_time
 
 logger = logging.getLogger(f"py_reportit.{__name__}")
 
@@ -130,6 +130,11 @@ class CrawlerService:
         logger.info(f"Generating {amount} crawl times from {pretty_format_time(crawl_start_time)} to {pretty_format_time(crawl_end_time)}. Offset: {crawl_offset_minutes} min, duration: {crawl_duration_minutes} min")
         return generate_random_times_between(crawl_start_time, crawl_end_time, amount)
 
+    def generate_time_graph_for_crawl(self, crawl: Crawl) -> str:
+        times = list(map(lambda crawl_item: crawl_item.scheduled_for, crawl.items))
+
+        return generate_time_graph(times, 5)
+
     @staticmethod
     def log_ids_and_crawl_times(ids_and_crawl_times: list[tuple[int, Arrow]]) -> None:
         for id_and_crawl_time in ids_and_crawl_times:
@@ -200,6 +205,8 @@ class CrawlerService:
             first_task_execution_time = next_crawl_item.scheduled_for
 
             logger.info(f"Queueing first crawl task, ETA {pretty_format_time(first_task_execution_time)}")
+
+            logger.info("\n" + self.generate_time_graph_for_crawl(crawl))
 
             task = chained_crawl.apply_async(eta=first_task_execution_time)
 

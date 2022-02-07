@@ -6,9 +6,10 @@ import pytz
 from textwrap import TextWrapper
 from typing import Callable
 from unicodedata import normalize
-from datetime import datetime, timedelta
-from random import choices
+from datetime import datetime
+from random import uniform
 from arrow import Arrow
+from math import ceil, floor
 
 from py_reportit.crawler.post_processors import abstract_pp
 from py_reportit.shared.model.answer_meta import ReportAnswerMeta
@@ -67,9 +68,10 @@ def get_last_tweet_id(report: Report) -> str:
     return None
 
 def generate_random_times_between(start: Arrow, end: Arrow, amount: int) -> list[Arrow]:
-    result_datetimes = list(Arrow.range('second', start, end))
+    start_timestamp = start.timestamp()
+    end_timestamp = end.timestamp()
 
-    return sorted(choices(result_datetimes, k=amount))
+    return sorted([Arrow.fromtimestamp(uniform(start_timestamp, end_timestamp)) for _ in range(amount)])
 
 def to_utc(dtime: datetime) -> datetime:
     lu_tz = pytz.timezone('Europe/Luxembourg')
@@ -84,6 +86,63 @@ def string_to_crontab_kwargs(crontab_str: str) -> dict:
         raise CrontabParseException("Crontab string does not have expected number of arguments")
 
     return dict(zip(ordered_celery_crontab_kwargs, crontab_str_split))
+
+def generate_time_graph(times: list[Arrow], interval_minutes: int = 5):
+    graph_symbols = [" ", "▁","▂","▃","▄","▅","▆","▇","█"]
+
+    first_timestamp = times[0].replace(second=0).shift(minutes=-(times[0].time().minute % interval_minutes))
+    last_timestamp = times[-1]
+
+    generated_intervals = [first_timestamp]
+
+    while generated_intervals[-1] < last_timestamp:
+        generated_intervals.append(generated_intervals[-1].shift(minutes=interval_minutes))
+
+    counts_per_interval = []
+
+    for index, intvl in enumerate(generated_intervals):
+        filter_func = lambda current_time: generated_intervals[index] <= current_time < generated_intervals[index].shift(minutes=interval_minutes)
+        current_time_is_in_interval = generated_intervals[index] <= Arrow.now() < generated_intervals[index].shift(minutes=interval_minutes)
+        first_interval_of_hour = intvl.time().minute < interval_minutes
+
+        matches = list(filter(filter_func,times))
+
+        if len(matches) or index != (len(generated_intervals) - 1):
+            counts_per_interval.append((first_interval_of_hour, len(matches), current_time_is_in_interval))
+
+    frame_top = "╭"
+    frame_bottom = "╰"
+    core_graph = "│"
+
+    for index, cnt in enumerate(counts_per_interval):
+        if index != 0 and cnt[0] == True:
+            core_graph += "│"
+            frame_top += "┬"
+            frame_bottom += "┴"
+        core_graph += graph_symbols[min(cnt[1], len(graph_symbols))]
+
+        if cnt[2]:
+            frame_top += "┬"
+            frame_bottom += "┴"
+        else:
+            frame_top += "─"
+            frame_bottom += "─"
+
+    core_graph += "│"
+    frame_top += "╮"
+    frame_bottom += "╯"
+
+    start_friendly = times[0].strftime("%H:%M:%S")
+    end_friendly = times[-1].strftime("%H:%M:%S")
+
+    eta = times[-1] - times[0]
+    eta_str = f"  {str(eta).split('.')[0]} left  "
+
+    top_line_spacing = len(core_graph) - len(start_friendly) - len(end_friendly) - len(eta_str)
+
+    top_line = start_friendly + " " * ceil(top_line_spacing/2) + eta_str + " " * floor(top_line_spacing/2) + end_friendly
+
+    return top_line + "\n" + frame_top + "\n" + core_graph + "\n" + frame_bottom
 
 class CrontabParseException(Exception):
     pass

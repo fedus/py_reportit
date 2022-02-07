@@ -125,7 +125,14 @@ def chained_crawl(
     next_task_execution_report_id = next_crawl_item.report_id
     next_task_execution_time = next_crawl_item.scheduled_for
 
-    logger.info(f"{len(current_crawl.waiting_items)} crawls remaining, scheduling crawl for report id {next_task_execution_report_id} at {pretty_format_time(next_task_execution_time)}")
+    logger.info(f"Scheduling next crawl for report id {next_task_execution_report_id} at {pretty_format_time(next_task_execution_time)}")
+
+    done_items = len(current_crawl.items) - len(current_crawl.waiting_items)
+    percentage_done = done_items / len(current_crawl.items) * 100
+    percentage_done_rounded = round(percentage_done, 2)
+
+    logger.info(f"{len(current_crawl.waiting_items)} of {len(current_crawl.items)} items remaining, {percentage_done_rounded}% done")
+    logger.info("\n" + crawler.generate_time_graph_for_crawl(current_crawl))
 
     next_task = chained_crawl.apply_async(eta=next_task_execution_time)
 
