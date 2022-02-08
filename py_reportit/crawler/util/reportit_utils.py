@@ -135,12 +135,12 @@ def generate_time_graph(times: list[Arrow], interval_minutes: int = 5):
     start_friendly = times[0].strftime("%H:%M:%S")
     end_friendly = times[-1].strftime("%H:%M:%S")
 
-    eta = times[-1] - times[0]
-    eta_str = f"  {str(eta).split('.')[0]} left  "
+    eta = times[-1] - max(times[0], Arrow.now())
+    eta_friendly = f"  {str(eta).split('.')[0]} left  "
 
-    top_line_spacing = len(core_graph) - len(start_friendly) - len(end_friendly) - len(eta_str)
+    top_line_spacing = len(core_graph) - len(start_friendly) - len(end_friendly) - len(eta_friendly)
 
-    top_line = start_friendly + " " * ceil(top_line_spacing/2) + eta_str + " " * floor(top_line_spacing/2) + end_friendly
+    top_line = start_friendly + " " * ceil(top_line_spacing/2) + eta_friendly + " " * floor(top_line_spacing/2) + end_friendly
 
     return top_line + "\n" + frame_top + "\n" + core_graph + "\n" + frame_bottom
 
