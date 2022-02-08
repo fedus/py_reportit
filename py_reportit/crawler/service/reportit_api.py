@@ -27,7 +27,7 @@ class ReportItService:
         self.requests_session = requests_session
 
     def get_latest_truncated_report(self) -> Report:
-        r = self.requests_session.get(self.config.get('REPORTIT_API_URL'))
+        r = self.requests_session.crawler_get(self.config.get('REPORTIT_API_URL'))
 
         r.raise_for_status()
 
@@ -130,7 +130,7 @@ class ReportItService:
         return [ReportAnswer(**message_dict, order=order, report_id=reportId, meta=ReportAnswerMeta()) for order, message_dict in enumerate(message_dicts)]
 
     def fetch_report_page(self, reportId: int) -> Response:
-        return self.requests_session.post(self.config.get("REPORTIT_API_ANSWER_URL"), {"search_id": reportId}, timeout=int(self.config.get("FETCH_REPORTS_TIMEOUT_SECONDS")))
+        return self.requests_session.crawler_post(self.config.get("REPORTIT_API_ANSWER_URL"), {"search_id": reportId}, timeout=int(self.config.get("FETCH_REPORTS_TIMEOUT_SECONDS")))
 
     @staticmethod
     def extract_from_message_block(block: ResultSet) -> dict:
