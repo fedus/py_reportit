@@ -4,8 +4,18 @@ import logging
 from typing import Iterable
 from requests.sessions import Session
 from string import Template
+from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
 
 logger = logging.getLogger(f"py_reportit.{__name__}")
+
+retry_strategy = Retry(
+    total=3,
+    status_forcelist=[429, 500, 502, 503, 504],
+    method_whitelist=["HEAD", "GET", "OPTIONS", "POST"]
+)
+
+adapter = HTTPAdapter(max_retries=retry_strategy)
 
 def get_requests_session(config: dict) -> Iterable[Session]:
     with requests.Session() as session:
@@ -29,6 +39,9 @@ def get_requests_session(config: dict) -> Iterable[Session]:
             logger.debug("Not using Scraper API")
             session.crawler_get = session.get
             session.crawler_post = session.post
+
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
 
         if int(config.get("USE_PROXY", 0)):
             logger.debug("Setting proxy and disabling SSL cert verification ...")

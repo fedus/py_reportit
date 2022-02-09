@@ -8,6 +8,7 @@ from celery import shared_task, Task
 from celery.utils.log import get_task_logger
 from sqlalchemy.orm import Session, sessionmaker
 from requests.exceptions import RequestException, Timeout
+from urllib3.exceptions import MaxRetryError
 
 import py_reportit.crawler.service.crawler as crawler
 from py_reportit.crawler.service.photo import PhotoService
@@ -101,9 +102,9 @@ def chained_crawl(
         current_crawl_item.report_found = False
         current_crawl_item.state = CrawlItemState.SUCCESS
         logger.info(f"No report found with id {current_report_id}, skipping.")
-    except Timeout:
+    except Timeout or MaxRetryError:
         current_crawl_item.state = CrawlItemState.FAILURE
-        logger.warn(f"Retrieval of report with id {current_report_id} timed out after {config.get('FETCH_REPORTS_TIMEOUT_SECONDS')} seconds, skipping")
+        logger.warn(f"Retrieval of report with id {current_report_id} timed out after {config.get('FETCH_REPORTS_TIMEOUT_SECONDS')} seconds or max retries reached, skipping")
     except RequestException:
         current_crawl_item.state = CrawlItemState.FAILURE
         logger.warn(f"Retrieval of report with id {current_report_id} failed, skipping", exc_info=True)
