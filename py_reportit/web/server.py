@@ -1,4 +1,4 @@
-from dependency_injector.wiring import Provide, Provider, inject
+from dependency_injector.wiring import Provide, inject
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi import Query, Path
 from fastapi.responses import FileResponse
@@ -10,6 +10,7 @@ from sqlalchemy.orm.session import Session
 
 from py_reportit.shared.config.container import Container
 from py_reportit.shared.config import config
+from py_reportit.shared.repository.report_answer import ReportAnswerRepository
 from py_reportit.web.schema.report import PagedReportList, Report
 from py_reportit.shared.model import *
 from py_reportit.shared.repository.report import ReportRepository
@@ -40,6 +41,10 @@ tags_metadata = [
     {
         "name": "reports",
         "description": "Search, filter and retrieve reports.",
+    },
+    {
+        "name": "utilities",
+        "description": "Query other useful information about reports."
     },
     {
         "name": "photos",
@@ -190,6 +195,13 @@ def get_report(
         raise HTTPException(status_code=404, detail=f"Report with id {reportId} does not exist")
     return report
 
+@app.get("/utilities/services", response_model=list[str], tags=["utilities"])
+@inject
+def get_services(
+    report_answer_repository: ReportAnswerRepository = Depends(Provide[Container.report_answer_repository]),
+    session: Session = Depends(get_session)
+):
+    return report_answer_repository.get_services(session)
 
 @app.get("/photos/{reportId}", tags=["photos"])
 async def get_photo(reportId: int = Path(None, description="The report ID for which the photo should be retrieved")):

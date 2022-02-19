@@ -1,4 +1,4 @@
-from sqlalchemy import update
+from sqlalchemy import update, select
 from sqlalchemy.orm import Session
 
 from py_reportit.shared.repository.abstract_repository import AbstractRepository
@@ -21,3 +21,6 @@ class ReportAnswerRepository(AbstractRepository[ReportAnswer]):
     def create(self, session: Session, entity: ReportAnswer) -> None:
         session.add(ReportAnswer(meta=ReportAnswerMeta(), **{column: getattr(entity, column) for column in ReportAnswer.__table__.columns.keys() if column != "id"}))
         session.commit()
+
+    def get_services(self, session: Session) -> list[str]:
+        return session.execute(select(ReportAnswer.author).distinct()).scalars().all()
