@@ -23,4 +23,4 @@ class ReportAnswerRepository(AbstractRepository[ReportAnswer]):
         session.commit()
 
     def get_services(self, session: Session) -> list[str]:
-        return session.execute(select(ReportAnswer.author).distinct()).scalars().all()
+        return session.execute(select(ReportAnswer.author).order_by(ReportAnswer.author.asc()).distinct()).scalars().all()
