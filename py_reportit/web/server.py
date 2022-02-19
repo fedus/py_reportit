@@ -102,7 +102,7 @@ def get_reports(
     street: Optional[str] = Query(None, description="The street to search for."),
     neighbourhood: Optional[str] = Query(None, description="The neighbourhood to search for."),
     postcode: Optional[int] = Query(None, description="The postcode to search for."),
-    search_text: Optional[str] = Query(None, description="Only reports matching the given search text in their title or description will be returned."),
+    search_text: Optional[str] = Query(None, description="Only reports matching the given search text in their title or description (or in any of the answers) will be returned."),
     report_repository: ReportRepository = Depends(Provide[Container.report_repository]),
     session: Session = Depends(get_session)
 ):
@@ -146,6 +146,7 @@ def get_reports(
     if search_text:
         search_attrs = list(map(lambda search_attr: report.Report.__dict__[search_attr], ["title", "description"]))
         or_q = list(map(lambda col: col.like(f'%{search_text}%'), search_attrs))
+        or_q.append(report.Report.answers.any(report_answer.ReportAnswer.text.like(f'%{search_text}%')))
 
     paged_reports_with_count = report_repository.get_paged(
         session,
