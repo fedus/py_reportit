@@ -24,6 +24,8 @@ You can retrieve reports in three different ways:
 - all at once (strongly discouraged)
 - by ID
 
+The `service` key of a report is inferred and a best guess based on the answers of that report, which inversely means that reports without answers do not have a value here.
+
 Reports are enriched with meta data, such as the **language** (guessed using CLD2, `un` stands for unknown), reverse-geolocated **address data** of the report's location, and **all answers** given by the city.
 
 You should **always** prefer the paginated endpoint over the endpoint that delivers all reports (ie a database dump), unless you **really** want to grab a complete copy of all the data at once.
@@ -89,6 +91,7 @@ def get_reports(
     asc: bool = Query(False, description="Whether or not to sort reports in ascending order."),
     status: Optional[ReportState] = Query(ReportState.ALL, description="Filter reports based on their status."),
     photo: Optional[PhotoState] = Query(PhotoState.ALL, description="Filter reports based on whether or not they have photos."),
+    service: Optional[str] = Query(None, description="The service in charge of the report"),
     after: Optional[date] = Query(None, description="Only return reports created after this date"),
     before: Optional[date] = Query(None, description="Only return reports created before this date"),
     street: Optional[str] = Query(None, description="The street to search for."),
@@ -117,6 +120,9 @@ def get_reports(
         and_q.append(report.Report.has_photo==True)
     elif photo == PhotoState.WITHOUT_PHOTO:
         and_q.append(report.Report.has_photo==False)
+
+    if service:
+        and_q.append(report.Report.service==service)
 
     if after:
         and_q.append(report.Report.created_at>=after)

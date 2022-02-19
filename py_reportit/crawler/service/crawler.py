@@ -63,7 +63,6 @@ class CrawlerService:
 
         return crawls[0] if crawls else None
 
-
     def create_and_persist_new_crawl(
         self,
         session: Session,

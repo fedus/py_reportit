@@ -17,6 +17,7 @@ class Report(BaseModel):
     updated_at: datetime
     key_category: Optional[str]
     id_service: Optional[int]
+    service: Optional[str]
     status: str
     meta: ReportMeta
     answers: List[Answer] = []

@@ -1,6 +1,11 @@
-from py_reportit.shared.model.orm_base import Base
+from typing import Optional
+
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, String, Unicode, UnicodeText, Numeric, DateTime, SmallInteger, Boolean
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy import Column, Integer, String, Unicode, UnicodeText, Numeric, DateTime, SmallInteger, Boolean, select
+
+from py_reportit.shared.model.orm_base import Base
+from py_reportit.shared.model.report_answer import ReportAnswer
 
 class Report(Base):
 
@@ -19,6 +24,17 @@ class Report(Base):
     status = Column(Unicode(50))
     answers = relationship("ReportAnswer", uselist=True, backref="report")
     meta = relationship("Meta", uselist=False, backref="report")
+
+    @hybrid_property
+    def service(self) -> Optional[str]:
+        if len(self.answers):
+            return sorted(self.answers, key=lambda answer: answer.order)[-1].author
+
+        return None
+
+    @service.expression
+    def service(cls):
+        return select(ReportAnswer.author).where(ReportAnswer.report_id == cls.id).order_by(ReportAnswer.order.desc()).limit(1).as_scalar()
 
     def __repr__(self):
         return f'<Report-It id={self.id!r}\n\
