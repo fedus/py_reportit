@@ -1,3 +1,4 @@
+from uuid import UUID
 from dependency_injector.wiring import Provide, inject
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi import Query, Path
@@ -10,10 +11,13 @@ from sqlalchemy.orm.session import Session
 
 from py_reportit.shared.config.container import Container
 from py_reportit.shared.config import config
+from py_reportit.shared.repository.category import CategoryRepository
 from py_reportit.shared.repository.report_answer import ReportAnswerRepository
+from py_reportit.shared.service.vote_service import VoteService
 from py_reportit.web.schema.report import PagedReportList, Report
 from py_reportit.shared.model import *
 from py_reportit.shared.repository.report import ReportRepository
+from py_reportit.web.schema.vote import Vote
 
 description = """
 The Report-It Unchained API lets you do awesome stuff based on a repository of all Report-Its submitted to the City of Luxembourg's Report-It system. 🚀
@@ -41,6 +45,10 @@ tags_metadata = [
     {
         "name": "reports",
         "description": "Search, filter and retrieve reports.",
+    },
+    {
+        "name": "votes",
+        "description": "Cast and retrieve votes"
     },
     {
         "name": "utilities",
@@ -97,6 +105,7 @@ def get_reports(
     status: Optional[ReportState] = Query(ReportState.ALL, description="Filter reports based on their status."),
     photo: Optional[PhotoState] = Query(PhotoState.ALL, description="Filter reports based on whether or not they have photos."),
     service: Optional[str] = Query(None, description="The service in charge of the report"),
+    category: Optional[int] = Query(None, description="The category to filter by"),
     after: Optional[date] = Query(None, description="Only return reports created after this date"),
     before: Optional[date] = Query(None, description="Only return reports created before this date"),
     street: Optional[str] = Query(None, description="The street to search for."),
@@ -128,6 +137,9 @@ def get_reports(
 
     if service:
         and_q.append(report.Report.service==service)
+
+    if category != None:
+        and_q.append(report.Report.meta.has(meta.Meta.category==category))
 
     if after:
         and_q.append(report.Report.created_at>=after)
@@ -196,13 +208,53 @@ def get_report(
         raise HTTPException(status_code=404, detail=f"Report with id {reportId} does not exist")
     return report
 
+@app.post("/votes/cast/{reportId}/category/", tags=["votes"])
+@inject
+def cast_vote(
+    vote: Vote,
+    reportId: int = Path(None, description="The ID of the report for which to cast a vote"),
+    vote_service: VoteService = Depends(Provide[Container.vote_service]),
+    session: Session = Depends(get_session)
+):
+    """
+    Cast a vote concerning a report's category.
+    """
+    return vote_service.cast_vote(session, vote.user_id, reportId, vote.category_id)
+
+@app.get("/votes/get-candidate/category", response_model=Report, tags=["votes"])
+@inject
+def get_candidate(
+    user_id: UUID = Query(..., description="The user id or identifier for which a new random report to vote for should be fetched"),
+    vote_service: VoteService = Depends(Provide[Container.vote_service]),
+    report_repository: ReportRepository = Depends(Provide[Container.report_repository]),
+    session: Session = Depends(get_session)
+):
+    """
+    Retrieve a randomly selected report from those with the least amount of total votes and for which the given user id has not yet cast a vote.
+    """
+    return report_repository.get_by_id(session, vote_service.get_random_report_id_for_voting(session, user_id))
+
 @app.get("/utilities/services", response_model=list[str], tags=["utilities"])
 @inject
 def get_services(
     report_answer_repository: ReportAnswerRepository = Depends(Provide[Container.report_answer_repository]),
     session: Session = Depends(get_session)
 ):
+    """
+    Retrieve a list of all services (city administration departments) found in the database.
+    """
     return report_answer_repository.get_services(session)
+
+@app.get("/utilities/categories", tags=["utilities"])
+@inject
+def get_categories(
+    category_repository: CategoryRepository = Depends(Provide[Container.category_repository]),
+    session: Session = Depends(get_session)
+):
+    """
+    Retrieve a list of all report categories in the database.
+    """
+    return category_repository.get_all(session)
 
 @app.get("/photos/{reportId}", tags=["photos"])
 async def get_photo(reportId: int = Path(None, description="The report ID for which the photo should be retrieved")):

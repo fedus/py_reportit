@@ -9,4 +9,6 @@ __all__ = [
     "page_with_count",
     "crawl_item",
     "crawl",
+    "category",
+    "meta_category_vote"
 ]

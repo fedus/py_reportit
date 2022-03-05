@@ -5,6 +5,8 @@ from pytz import timezone as pytz_timezone
 from py_reportit.shared.config import config
 from py_reportit.shared.config.db import Database
 from py_reportit.shared.config.requests_session import get_requests_session
+from py_reportit.shared.repository.category import CategoryRepository
+from py_reportit.shared.repository.category_vote import CategoryVoteRepository
 from py_reportit.shared.repository.crawl import CrawlRepository
 from py_reportit.shared.repository.crawl_item import CrawlItemRepository
 from py_reportit.shared.repository.report import ReportRepository
@@ -17,6 +19,7 @@ from py_reportit.crawler.service.photo import PhotoService
 from py_reportit.crawler.post_processors.abstract_pp import PostProcessorDispatcher
 from py_reportit.crawler.post_processors.twitter_pp import Twitter
 from py_reportit.crawler.post_processors.geocode_pp import Geocode
+from py_reportit.shared.service.vote_service import VoteService
 
 
 post_processors = [Geocode, Twitter]
@@ -47,11 +50,20 @@ class Container(containers.DeclarativeContainer):
     report_answer_repository = providers.Factory(ReportAnswerRepository)
     crawl_repository = providers.Factory(CrawlRepository)
     crawl_item_repository = providers.Factory(CrawlItemRepository)
+    category_repository = providers.Factory(CategoryRepository)
+    category_vote_repository = providers.Factory(CategoryVoteRepository)
 
     # Services
     reportit_service = providers.Factory(ReportItService, config=config, requests_session=requests_session)
     geocoder_service = providers.Factory(GeocoderService, config=config, requests_session=requests_session)
     photo_service = providers.Factory(PhotoService, config=config)
+    vote_service = providers.Factory(
+        VoteService,
+        config=config,
+        meta_repository=meta_repository,
+        category_vote_repository=category_vote_repository,
+        category_repository=category_repository
+    )
 
     # Helper function to work around scope limitations with class variables and list comprehension
     # see https://stackoverflow.com/questions/13905741/accessing-class-variables-from-a-list-comprehension-in-the-class-definition
