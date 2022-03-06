@@ -16,5 +16,6 @@ class User(Base):
     username = Column(Unicode(100), nullable=False, unique=True)
     password = Column(PasswordType(schemes=["pbkdf2_sha512"]), nullable=False)
     created_at = Column(LocalizedArrow, nullable=False, default=Arrow.now)
+    last_login = Column(LocalizedArrow, nullable=True)
     admin = Column(Boolean, nullable=False, default=False, server_default=text('false'))
     disabled = Column(Boolean, nullable=False, default=False, server_default=text('false'))
