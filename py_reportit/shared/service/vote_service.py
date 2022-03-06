@@ -31,8 +31,7 @@ class VoteService:
         category = self.category_repository.get_by_id(session, category_id)
 
         if not report_meta or not category:
-            logger.error(f"Could not persist vote because report {report_id} or category {category_id} were not found")
-            return False
+            raise VoteException(f"Could not persist vote because report {report_id} or category {category_id} were not found")
         
         existing_vote = self.category_vote_repository.get_for_meta_and_user_id(session, report_meta.id, user_id)
 
@@ -53,3 +52,6 @@ class VoteService:
 
     def get_random_report_id_for_voting(self, session: Session, user_id: UUID) -> int:
         return self.meta_repository.get_random_among_lowest_votes(session, user_id).report_id
+
+class VoteException(Exception):
+    pass

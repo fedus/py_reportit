@@ -1,7 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from py_reportit.shared.service.vote_service import VoteException
 
-from py_reportit.web.routers import photos, reports, utilities, votes
+from py_reportit.web.routers import photos, reports, utilities, votes, authentication
 from py_reportit.shared.config.container import Container
 from py_reportit.shared.config import config
 
@@ -63,16 +65,25 @@ app = FastAPI(
     openapi_tags=tags_metadata,
 )
 
+@app.exception_handler(VoteException)
+async def unicorn_exception_handler(request: Request, exc: VoteException):
+    return JSONResponse(
+        status_code=400,
+        content={"message": str(exc)},
+    )
+
 app.include_router(reports.router)
 app.include_router(photos.router)
 app.include_router(votes.router)
 app.include_router(utilities.router)
+app.include_router(authentication.router)
+
 app.mount("/static/photos", StaticFiles(directory=config.get('PHOTO_DOWNLOAD_FOLDER')), name="static")
 
 container = Container()
 
 container.config.from_dict(config)
 
-container.wire(modules=[__name__], packages=[".routers"])
+container.wire(modules=[__name__, ".dependencies"], packages=[".routers"])
 
 app.container = container

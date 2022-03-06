@@ -12,6 +12,7 @@ from py_reportit.shared.repository.crawl_item import CrawlItemRepository
 from py_reportit.shared.repository.report import ReportRepository
 from py_reportit.shared.repository.meta import MetaRepository
 from py_reportit.shared.repository.report_answer import ReportAnswerRepository
+from py_reportit.shared.repository.user import UserRepository
 from py_reportit.crawler.service.crawler import CrawlerService
 from py_reportit.crawler.service.reportit_api import ReportItService
 from py_reportit.crawler.service.geocoder import GeocoderService
@@ -52,6 +53,7 @@ class Container(containers.DeclarativeContainer):
     crawl_item_repository = providers.Factory(CrawlItemRepository)
     category_repository = providers.Factory(CategoryRepository)
     category_vote_repository = providers.Factory(CategoryVoteRepository)
+    user_repository = providers.Factory(UserRepository)
 
     # Services
     reportit_service = providers.Factory(ReportItService, config=config, requests_session=requests_session)

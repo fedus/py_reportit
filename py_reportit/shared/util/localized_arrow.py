@@ -12,4 +12,5 @@ class LocalizedArrow(TypeDecorator):
 
     def process_result_value(self, value, dialect):
         # Ideally, config would be injected
-        return value.to(config.get("TIMEZONE", "local"))
+        if value:
+            return value.to(config.get("TIMEZONE", "local"))
