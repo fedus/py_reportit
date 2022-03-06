@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from py_reportit.web.routers import photos, reports, utilities, votes
 from py_reportit.shared.config.container import Container
@@ -66,6 +67,7 @@ app.include_router(reports.router)
 app.include_router(photos.router)
 app.include_router(votes.router)
 app.include_router(utilities.router)
+app.mount("/static/photos", StaticFiles(directory=config.get('PHOTO_DOWNLOAD_FOLDER')), name="static")
 
 container = Container()
 
