@@ -10,5 +10,6 @@ __all__ = [
     "crawl_item",
     "crawl",
     "category",
-    "meta_category_vote"
+    "meta_category_vote",
+    "user"
 ]
