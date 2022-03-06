@@ -1,23 +1,8 @@
-from uuid import UUID
-from dependency_injector.wiring import Provide, inject
-from fastapi import FastAPI, Depends, HTTPException, Request
-from fastapi import Query, Path
-from fastapi.responses import FileResponse
-from typing import List, Optional
-from os import path
-from enum import Enum
-from datetime import date
-from sqlalchemy.orm.session import Session
+from fastapi import FastAPI
 
+from py_reportit.web.routers import photos, reports, utilities, votes
 from py_reportit.shared.config.container import Container
 from py_reportit.shared.config import config
-from py_reportit.shared.repository.category import CategoryRepository
-from py_reportit.shared.repository.report_answer import ReportAnswerRepository
-from py_reportit.shared.service.vote_service import VoteService
-from py_reportit.web.schema.report import PagedReportList, Report
-from py_reportit.shared.model import *
-from py_reportit.shared.repository.report import ReportRepository
-from py_reportit.web.schema.vote import Vote
 
 description = """
 The Report-It Unchained API lets you do awesome stuff based on a repository of all Report-Its submitted to the City of Luxembourg's Report-It system. 🚀
@@ -60,14 +45,6 @@ tags_metadata = [
     },
 ]
 
-def get_session(request: Request):
-    sessionmaker = request.app.container.sessionmaker()
-    session = sessionmaker()
-    try:
-        yield session
-    finally:
-        session.close()
-
 app = FastAPI(
     title="Report-It Unchained API",
     description=description,
@@ -85,193 +62,15 @@ app = FastAPI(
     openapi_tags=tags_metadata,
 )
 
-class ReportState(str, Enum):
-    ALL = "all"
-    ACCEPTED = "accepted"
-    FINISHED = "finished"
-
-class PhotoState(str, Enum):
-    ALL = "all"
-    WITH_PHOTO = "with"
-    WITHOUT_PHOTO = "without"
-
-@app.get("/reports", response_model=PagedReportList, tags=["reports"])
-@inject
-def get_reports(
-    page: str = Query(None, description="The page to retrieve for the paginated query."),
-    page_size: int = Query(50, description="The amount of reports per page."),
-    sort_by: str = Query('id', description="The field to sort by."),
-    asc: bool = Query(False, description="Whether or not to sort reports in ascending order."),
-    status: Optional[ReportState] = Query(ReportState.ALL, description="Filter reports based on their status."),
-    photo: Optional[PhotoState] = Query(PhotoState.ALL, description="Filter reports based on whether or not they have photos."),
-    service: Optional[str] = Query(None, description="The service in charge of the report"),
-    category: Optional[int] = Query(None, description="The category to filter by"),
-    after: Optional[date] = Query(None, description="Only return reports created after this date"),
-    before: Optional[date] = Query(None, description="Only return reports created before this date"),
-    street: Optional[str] = Query(None, description="The street to search for."),
-    neighbourhood: Optional[str] = Query(None, description="The neighbourhood to search for."),
-    postcode: Optional[int] = Query(None, description="The postcode to search for."),
-    search_text: Optional[str] = Query(None, description="Only reports matching the given search text in their title or description (or in any of the answers) will be returned."),
-    report_repository: ReportRepository = Depends(Provide[Container.report_repository]),
-    session: Session = Depends(get_session)
-):
-    """
-    Make queries for paginated and filtered reports.
-    \f
-    :param page: The page to retrieve for the paginated query..
-    """
-    boxed_page_size = max(1, min(100, page_size))
-
-    and_q = []
-    or_q = []
-
-    if status == ReportState.ACCEPTED:
-        and_q.append(report.Report.status=="accepted")
-    elif status == ReportState.FINISHED:
-        and_q.append(report.Report.status=="finished")
-
-    if photo == PhotoState.WITH_PHOTO:
-        and_q.append(report.Report.has_photo==True)
-    elif photo == PhotoState.WITHOUT_PHOTO:
-        and_q.append(report.Report.has_photo==False)
-
-    if service:
-        and_q.append(report.Report.service==service)
-
-    if category != None:
-        and_q.append(report.Report.meta.has(meta.Meta.category==category))
-
-    if after:
-        and_q.append(report.Report.created_at>=after)
-    if before:
-        and_q.append(report.Report.created_at<=before)
-
-    if street:
-        and_q.append(report.Report.meta.has(meta.Meta.address_street.like(f'%{street}%')))
-
-    if neighbourhood:
-        and_q.append(report.Report.meta.has(meta.Meta.address_neighbourhood.like(f'%{neighbourhood}%')))
-
-    if postcode:
-        and_q.append(report.Report.meta.has(meta.Meta.address_postcode == postcode))
-
-    if search_text:
-        search_attrs = list(map(lambda search_attr: report.Report.__dict__[search_attr], ["title", "description"]))
-        or_q = list(map(lambda col: col.like(f'%{search_text}%'), search_attrs))
-        or_q.append(report.Report.answers.any(report_answer.ReportAnswer.text.like(f'%{search_text}%')))
-
-    paged_reports_with_count = report_repository.get_paged(
-        session,
-        page_size=boxed_page_size,
-        page=page,
-        by=report.Report.__dict__[sort_by],
-        asc=asc,
-        and_cond=and_q if len(and_q) else None,
-        or_cond=or_q if len(or_q) else None
-    )
-
-    paged_reports = paged_reports_with_count["page"];
-
-    return PagedReportList(
-        previous=paged_reports.paging.bookmark_previous if paged_reports.paging.has_previous else None,
-        next=paged_reports.paging.bookmark_next if paged_reports.paging.has_next else None,
-        total_count=paged_reports_with_count["total_count"],
-        reports=paged_reports,
-    )
-
-@app.get("/reports/all", response_model=List[Report], tags=["reports"])
-@inject
-def get_reports(
-    report_repository: ReportRepository = Depends(Provide[Container.report_repository]),
-    session: Session = Depends(get_session)
-):
-    """
-    Retrieve all reports in the system, basically a database dump.
-    **Using this endpoint is strongly discouraged.** Please consider using the paginated and filtered endpoint instead!
-    """
-    return report_repository.get_all(session)
-
-@app.get("/reports/{reportId}", response_model=Report, tags=["reports"])
-@inject
-def get_report(
-    reportId: int = Path(None, description="The ID of the report to retrieve"),
-    report_repository: ReportRepository = Depends(Provide[Container.report_repository]),
-    session: Session = Depends(get_session)
-):
-    """
-    Retrieve the report related to a given ID.
-    \f
-    :param reportId: The report ID
-    """
-    report = report_repository.get_by_id(session, reportId)
-    if report is None:
-        raise HTTPException(status_code=404, detail=f"Report with id {reportId} does not exist")
-    return report
-
-@app.post("/votes/cast/{reportId}/category/", tags=["votes"])
-@inject
-def cast_vote(
-    vote: Vote,
-    reportId: int = Path(None, description="The ID of the report for which to cast a vote"),
-    vote_service: VoteService = Depends(Provide[Container.vote_service]),
-    session: Session = Depends(get_session)
-):
-    """
-    Cast a vote concerning a report's category.
-    """
-    return vote_service.cast_vote(session, vote.user_id, reportId, vote.category_id)
-
-@app.get("/votes/get-candidate/category", response_model=Report, tags=["votes"])
-@inject
-def get_candidate(
-    user_id: UUID = Query(..., description="The user id or identifier for which a new random report to vote for should be fetched"),
-    vote_service: VoteService = Depends(Provide[Container.vote_service]),
-    report_repository: ReportRepository = Depends(Provide[Container.report_repository]),
-    session: Session = Depends(get_session)
-):
-    """
-    Retrieve a randomly selected report from those with the least amount of total votes and for which the given user id has not yet cast a vote.
-    """
-    return report_repository.get_by_id(session, vote_service.get_random_report_id_for_voting(session, user_id))
-
-@app.get("/utilities/services", response_model=list[str], tags=["utilities"])
-@inject
-def get_services(
-    report_answer_repository: ReportAnswerRepository = Depends(Provide[Container.report_answer_repository]),
-    session: Session = Depends(get_session)
-):
-    """
-    Retrieve a list of all services (city administration departments) found in the database.
-    """
-    return report_answer_repository.get_services(session)
-
-@app.get("/utilities/categories", tags=["utilities"])
-@inject
-def get_categories(
-    category_repository: CategoryRepository = Depends(Provide[Container.category_repository]),
-    session: Session = Depends(get_session)
-):
-    """
-    Retrieve a list of all report categories in the database.
-    """
-    return category_repository.get_all(session)
-
-@app.get("/photos/{reportId}", tags=["photos"])
-async def get_photo(reportId: int = Path(None, description="The report ID for which the photo should be retrieved")):
-    """
-    Retrieve the photo related to a given report ID.
-    \f
-    :param reportId: The related report ID
-    """
-    photo_filename = f"{config.get('PHOTO_DOWNLOAD_FOLDER')}/{reportId}.jpg"
-    if not path.isfile(photo_filename):
-        raise HTTPException(status_code=404, detail=f"No photo found for report with id {reportId}")
-    return FileResponse(photo_filename)
+app.include_router(reports.router)
+app.include_router(photos.router)
+app.include_router(votes.router)
+app.include_router(utilities.router)
 
 container = Container()
 
 container.config.from_dict(config)
 
-container.wire(modules=[__name__])
+container.wire(modules=[__name__], packages=[".routers"])
 
 app.container = container
