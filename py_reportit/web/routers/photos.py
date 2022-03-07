@@ -1,5 +1,8 @@
-from fastapi import APIRouter, Path
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Path, HTTPException
+from fastapi.responses import FileResponse
+from os import path
+
+from py_reportit.shared.config import config
 
 
 router = APIRouter(tags=["photos"], prefix="/photos")
@@ -11,4 +14,7 @@ async def get_photo(reportId: int = Path(None, description="The report ID for wh
     \f
     :param reportId: The related report ID
     """
-    return RedirectResponse(f"/static/photos/{reportId}.jpg")
+    photo_filename = f"{config.get('PHOTO_DOWNLOAD_FOLDER')}/{reportId}.jpg"
+    if not path.isfile(photo_filename):
+        raise HTTPException(status_code=404, detail=f"No photo found for report with id {reportId}")
+    return FileResponse(photo_filename)

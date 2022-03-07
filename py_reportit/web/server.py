@@ -1,6 +1,5 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 from py_reportit.shared.service.vote_service import VoteException
 
 from py_reportit.web.routers import photos, reports, utilities, votes, authentication
@@ -77,8 +76,6 @@ app.include_router(photos.router)
 app.include_router(votes.router)
 app.include_router(utilities.router)
 app.include_router(authentication.router)
-
-app.mount("/static/photos", StaticFiles(directory=config.get('PHOTO_DOWNLOAD_FOLDER')), name="static")
 
 container = Container()
 
