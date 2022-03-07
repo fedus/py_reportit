@@ -25,7 +25,7 @@ def get_requests_session(config: dict) -> Iterable[Session]:
             params["api_key"] = config.get('SCRAPER_API_KEY')
             params["url"] = url
             return self.get(url=config.get('SCRAPER_API_BASE_URL'), params=params, **kwargs)
-        
+
         def crawler_post(self: requests.Session, url, data=None, json=None, params={}, **kwargs):
             params["api_key"] = config.get('SCRAPER_API_KEY')
             params["url"] = url

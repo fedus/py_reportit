@@ -130,7 +130,22 @@ class ReportItService:
         return [ReportAnswer(**message_dict, order=order, report_id=reportId, meta=ReportAnswerMeta()) for order, message_dict in enumerate(message_dicts)]
 
     def fetch_report_page(self, reportId: int) -> Response:
-        return self.requests_session.crawler_post(self.config.get("REPORTIT_API_ANSWER_URL"), {"search_id": reportId}, timeout=int(self.config.get("FETCH_REPORTS_TIMEOUT_SECONDS")))
+        r = self.requests_session.crawler_get(
+            self.config.get("REPORTIT_API_ANSWER_URL"),
+            params={ "session_number": reportId }
+        )
+
+        nonce = re.search(self.config.get("REPORTIT_API_TOKEN_REGEX"), r.text).group(1)
+
+        if not nonce:
+            logger.error(f"Could not find or fetch nonce for report {reportId}", exc_info=True)
+            raise NonceException(f"Could not find or fetch nonce for report {reportId}")
+
+        return self.requests_session.crawler_post(
+            self.config.get("REPORTIT_API_ANSWER_URL"),
+            { "search_id": reportId, "search_id2": nonce, "session_number": reportId },
+            timeout=int(self.config.get("FETCH_REPORTS_TIMEOUT_SECONDS"))
+        )
 
     @staticmethod
     def extract_from_message_block(block: ResultSet) -> dict:
@@ -150,4 +165,10 @@ class ReportItService:
         }
 
 class ReportNotFoundException(Exception):
+    pass
+
+class ReportParseException(Exception):
+    pass
+
+class NonceException(Exception):
     pass

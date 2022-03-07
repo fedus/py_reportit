@@ -32,17 +32,6 @@ class App:
         logger.info("One-off crawl scheduling finished.")
 
     def run(self):
-        sesh = container.sessionmaker()
-        with sesh() as s:
-            r = container.meta_repository()
-            x = r.get_by(s, meta.Meta.vote_count == 0)
-            #print(x)
-            #print(x[0].category.id, x[0].category.label)
-            usr = "16f919c922424682af58a6a51c2bca3c"
-            y = r.get_random_among_lowest_votes(s, usr)
-            print(y)
-        quit()
-
         if self.config.get("SPECIAL_RUN_MODE") == "ONE_OFF_CRAWL":
             logger.info("Running one-off crawl task")
             self.execute_crawler()
