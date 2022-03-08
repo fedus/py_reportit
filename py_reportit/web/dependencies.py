@@ -6,13 +6,18 @@ from datetime import timedelta
 from arrow import Arrow
 from jose import JWTError, jwt
 
+from py_reportit.shared.config import config
 from py_reportit.shared.model.user import User
 from py_reportit.shared.repository.user import UserRepository
 from py_reportit.shared.config.container import Container
 from py_reportit.web.schema.token import TokenData
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+# Because oauth_scheme cannot be a function, we cannot use DI in a function
+# to generate the tokenUrl and need to explicitly import the config
+root_path = config.get("ROOT_PATH", None)
+token_url = f"{root_path}/auth/token" if root_path else "/auth/token"
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=token_url)
 
 def get_session(request: Request):
     sessionmaker = request.app.container.sessionmaker()

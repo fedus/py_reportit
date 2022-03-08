@@ -2,7 +2,6 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from py_reportit.shared.service.vote_service import VoteException
 
-from py_reportit.web.routers import photos, reports, utilities, votes, authentication
 from py_reportit.shared.config.container import Container
 from py_reportit.shared.config import config
 
@@ -47,40 +46,50 @@ tags_metadata = [
     },
 ]
 
-app = FastAPI(
-    title="Report-It Unchained API",
-    description=description,
-    version="0.1.0",
-    #terms_of_service="https://zug.lu/rprtt/terms/",
-    contact={
-        "name": "ZUG - Zentrum fir Urban Gerechtegkeet",
-        "url": "https://zug.lu",
-        "email": "info@zug.lu",
-    },
-    #license_info={
-    #    "name": "Apache 2.0",
-    #    "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
-    #},
-    openapi_tags=tags_metadata,
-)
 
-@app.exception_handler(VoteException)
-async def unicorn_exception_handler(request: Request, exc: VoteException):
-    return JSONResponse(
-        status_code=400,
-        content={"message": str(exc)},
+def build_app():
+    container = Container()
+
+    container.config.from_dict(config)
+
+    container.wire(modules=[__name__, ".dependencies"], packages=[".routers"])
+
+    from py_reportit.web.routers import photos, reports, utilities, votes, authentication
+
+    app = FastAPI(
+        title="Report-It Unchained API",
+        description=description,
+        version="0.1.0",
+        #terms_of_service="https://zug.lu/rprtt/terms/",
+        contact={
+            "name": "ZUG - Zentrum fir Urban Gerechtegkeet",
+            "url": "https://zug.lu",
+            "email": "info@zug.lu",
+        },
+        #license_info={
+        #    "name": "Apache 2.0",
+        #    "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
+        #},
+        openapi_tags=tags_metadata,
+        root_path=config.get("ROOT_PATH", "/")
     )
 
-app.include_router(reports.router)
-app.include_router(photos.router)
-app.include_router(votes.router)
-app.include_router(utilities.router)
-app.include_router(authentication.router)
+    @app.exception_handler(VoteException)
+    async def unicorn_exception_handler(request: Request, exc: VoteException):
+        return JSONResponse(
+            status_code=400,
+            content={"message": str(exc)},
+        )
 
-container = Container()
+    app.include_router(reports.router)
+    app.include_router(photos.router)
+    app.include_router(votes.router)
+    app.include_router(utilities.router)
+    app.include_router(authentication.router)
 
-container.config.from_dict(config)
+    app.container = container
 
-container.wire(modules=[__name__, ".dependencies"], packages=[".routers"])
+    return app
 
-app.container = container
+
+app = build_app()
