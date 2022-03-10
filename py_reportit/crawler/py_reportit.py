@@ -38,6 +38,9 @@ class App:
         elif self.config.get("SPECIAL_RUN_MODE") == "ONE_OFF_PP":
             logger.info("Running one-off pp task")
             self.celery_app.send_task("tasks.post_processors")
+        elif self.config.get("SPECIAL_RUN_MODE") == "RESUME":
+            logger.info("Resuming chained crawl")
+            self.celery_app.send_task("tasks.chained_crawl")
 
 container = build_container_for_crawler()
 

@@ -137,6 +137,8 @@ class ReportItService:
 
         nonce = re.search(self.config.get("REPORTIT_API_TOKEN_REGEX"), r.text).group(1)
 
+        logger.info(f"Using nonce {nonce} based on regex {self.config.get('REPORTIT_API_TOKEN_REGEX')}")
+
         if not nonce:
             logger.error(f"Could not find or fetch nonce for report {reportId}", exc_info=True)
             raise NonceException(f"Could not find or fetch nonce for report {reportId}")
