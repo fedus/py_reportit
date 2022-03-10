@@ -154,7 +154,7 @@ class ReportItService:
         hidden_fields = soup.select("input[type=hidden]")
 
         if not hidden_fields or not len(hidden_fields):
-            raise NonceException("Could not find any nonces")
+            logger.warn("Could not find any nonces")
 
         return { field["name"]: field["value"] for field in hidden_fields }
 
