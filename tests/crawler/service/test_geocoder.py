@@ -1,4 +1,3 @@
-import requests
 import pytest
 import logging
 

@@ -6,11 +6,13 @@ from dotenv import dotenv_values
 
 is_dev = "--dev" in sys.argv or os.environ.get("ENV", "PROD") == "DEV"
 
-special_run_mode = "ONE_OFF_CRAWL" if "--one-off-crawl" in sys.argv else (
-    "ONE_OFF_PP" if "--one-off-pp" in sys.argv else (
-        "RESUME" if "--resume" in sys.argv else None
-    )
-)
+special_run_mode = None
+
+special_run_mode = "ONE_OFF_CRAWL" if "--one-off-crawl" in sys.argv else special_run_mode
+special_run_mode = "ONE_OFF_CRAWL_IMMEDIATE" if "--one-off-crawl-immediate" in sys.argv else special_run_mode
+special_run_mode = "ONE_OFF_PP" if "--one-off-pp" in sys.argv else special_run_mode
+special_run_mode = "RESUME" if "--resume" in sys.argv else special_run_mode
+
 
 dotenv_variant = "dev" if is_dev else "prod"
 

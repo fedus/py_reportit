@@ -35,6 +35,9 @@ class App:
         if self.config.get("SPECIAL_RUN_MODE") == "ONE_OFF_CRAWL":
             logger.info("Running one-off crawl task")
             self.execute_crawler()
+        elif self.config.get("SPECIAL_RUN_MODE") == "ONE_OFF_CRAWL_IMMEDIATE":
+            logger.info("Running one-off immediate crawl task")
+            self.celery_app.send_task("tasks.launch_chained_crawl", kwargs={ "immediate": True })
         elif self.config.get("SPECIAL_RUN_MODE") == "ONE_OFF_PP":
             logger.info("Running one-off pp task")
             self.celery_app.send_task("tasks.post_processors")

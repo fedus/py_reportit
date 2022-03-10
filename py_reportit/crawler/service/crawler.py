@@ -120,9 +120,14 @@ class CrawlerService:
 
         return recent_reports
 
-    def generate_crawl_times(self, amount: int) -> list[Arrow]:
-        crawl_offset_minutes = random.randint(int(self.config.get("CRAWL_FIRST_OFFSET_MINUTES_MIN")), int(self.config.get("CRAWL_FIRST_OFFSET_MINUTES_MAX")))
+    def generate_crawl_times(self, amount: int, immediate: bool = False) -> list[Arrow]:
+        if immediate:
+            crawl_offset_minutes = 0
+        else:
+            crawl_offset_minutes = random.randint(int(self.config.get("CRAWL_FIRST_OFFSET_MINUTES_MIN")), int(self.config.get("CRAWL_FIRST_OFFSET_MINUTES_MAX")))
+
         crawl_duration_minutes = random.randint(int(self.config.get("CRAWL_DURATION_MINUTES_MIN")), int(self.config.get("CRAWL_DURATION_MINUTES_MAX")))
+
         crawl_start_time = Arrow.now(self.timezone) + timedelta(minutes=crawl_offset_minutes)
         crawl_end_time = crawl_start_time + timedelta(minutes=crawl_duration_minutes)
 
@@ -140,7 +145,7 @@ class CrawlerService:
             pretty_time = pretty_format_time(id_and_crawl_time[1])
             logger.debug(f"Id {id_and_crawl_time[0]} will be crawled at {pretty_time} ({id_and_crawl_time[1]})")
 
-    def crawl(self, session: Session):
+    def crawl(self, session: Session, immediate: bool = False):
         logger.info("Fetching existing recent reports from database ...")
         recent_reports = self.get_recent_reports(session)
 
@@ -162,7 +167,7 @@ class CrawlerService:
         all_combined_ids = random.sample(recent_ids, len(recent_ids)) + lookahead_ids
         relevant_combined_ids = [report_id for report_id in all_combined_ids if report_id not in closed_recent_report_ids]
 
-        crawl_times = self.generate_crawl_times(len(relevant_combined_ids))
+        crawl_times = self.generate_crawl_times(len(relevant_combined_ids), immediate=immediate)
 
         ids_and_crawl_times = list(zip(relevant_combined_ids, crawl_times))
 

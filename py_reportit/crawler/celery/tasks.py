@@ -147,13 +147,14 @@ def chained_crawl(
 @inject
 def launch_chained_crawl(
     self,
+    immediate: bool = False,
     crawler: crawler.CrawlerService = Provide['crawler_service'],
     timezone: tzinfo = Provide['timezone']
 ) -> None:
     logger.info(f"Starting crawl scheduler at {datetime.now(timezone)}")
 
     try:
-        crawler.crawl(self.session)
+        crawler.crawl(self.session, immediate=immediate)
     except:
         logger.error("Error during crawl: ", sys.exc_info()[0])
 

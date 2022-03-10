@@ -38,19 +38,6 @@ class ReportItService:
         most_recent_report = raw_reports[-1]
         return Report(**dissoc(most_recent_report, "thumbnail_url"))
 
-    def get_reports(self) -> list[Report]:
-        r = self.requests_session.get(self.config.get('REPORTIT_API_URL'))
-        unsorted_reports = list(
-            map(
-                lambda rawReport: Report(**{**rawReport,
-                                         "created_at": datetime.strptime(rawReport['created_at'], self.DATE_FORMAT_API),
-                                         "updated_at": datetime.strptime(rawReport['updated_at'], self.DATE_FORMAT_API)},
-                                        meta=Meta()),
-                r.json().get('reports')
-            )
-        )
-        return sorted(unsorted_reports, key=lambda report: report.id)
-
     def get_report_with_answers(self, reportId: int, photo_callback: Optional[Callable[[Report, str], None]] = None) -> Report:
         r = self.fetch_report_page(reportId)
 
@@ -135,19 +122,41 @@ class ReportItService:
             params={ "session_number": reportId }
         )
 
-        nonce = re.search(self.config.get("REPORTIT_API_TOKEN_REGEX"), r.text).group(1)
+        nonces = self.extract_nonces(r.text)
+        report_id_input_field_name = self.extract_report_id_input_field(r.text)
 
-        logger.info(f"Using nonce {nonce} based on regex {self.config.get('REPORTIT_API_TOKEN_REGEX')}")
-
-        if not nonce:
-            logger.error(f"Could not find or fetch nonce for report {reportId}", exc_info=True)
-            raise NonceException(f"Could not find or fetch nonce for report {reportId}")
+        logger.info(f"Using nonce(s) {nonces} and report id input field name {report_id_input_field_name}")
 
         return self.requests_session.crawler_post(
             self.config.get("REPORTIT_API_ANSWER_URL"),
-            { "search_id": reportId, "search_id2": nonce, "session_number": reportId },
+            { report_id_input_field_name: reportId, **nonces, "session_number": reportId },
             timeout=int(self.config.get("FETCH_REPORTS_TIMEOUT_SECONDS"))
         )
+    
+    def extract_report_id_input_field(self, html) -> str:
+        soup = BeautifulSoup(html, 'html.parser')
+
+        report_id_input_candidates = soup.select("input[required]")
+
+        if not report_id_input_candidates or not len(report_id_input_candidates) \
+            or len(report_id_input_candidates) > 1:
+            candidates = report_id_input_candidates if report_id_input_candidates else "None"
+
+            raise ReportInputFieldExtractionException(
+                f"Could not detect report id input field, candidates: {candidates}"
+            )
+        
+        return report_id_input_candidates[0]["name"]
+    
+    def extract_nonces(self, html) -> dict:
+        soup = BeautifulSoup(html, 'html.parser')
+
+        hidden_fields = soup.select("input[type=hidden]")
+
+        if not hidden_fields or not len(hidden_fields):
+            raise NonceException("Could not find any nonces")
+
+        return { field["name"]: field["value"] for field in hidden_fields }
 
     @staticmethod
     def extract_from_message_block(block: ResultSet) -> dict:
@@ -169,7 +178,7 @@ class ReportItService:
 class ReportNotFoundException(Exception):
     pass
 
-class ReportParseException(Exception):
+class ReportInputFieldExtractionException(Exception):
     pass
 
 class NonceException(Exception):

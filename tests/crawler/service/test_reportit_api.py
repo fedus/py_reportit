@@ -2,77 +2,20 @@ import pytest
 
 from types import SimpleNamespace
 from datetime import datetime
+from unittest.mock import Mock
 
 from py_reportit.shared.config.container import Container
 from py_reportit.shared.model.report_answer import ReportAnswer
-
-MOCK_REPORTS = [
-    {
-        "id": 21906,
-        "title": "Title 2",
-        "description": "Description 2",
-        "photo_url": "https://reportit.vdl.lu/photo/21906.jpg",
-        "thumbnail_url": "https://reportit.vdl.lu/thumbnail/21906.jpg",
-        "latitude": 49.61490385687302,
-        "longitude": 6.131666636493964,
-        "created_at": "2021-12-21 12:04:21",
-        "updated_at": "2021-12-21 13:34:23",
-        "key_category": "",
-        "id_service": 14,
-        "status": "accepted"
-    },
-    {
-        "id": 22323,
-        "title": "Title 3",
-        "description": "Description 3",
-        "photo_url": "https://reportit.vdl.lu/photo/22323.jpg",
-        "thumbnail_url": "https://reportit.vdl.lu/thumbnail/22323.jpg",
-        "latitude": 49.613667863493866,
-        "longitude": 6.134274533706225,
-        "created_at": "2021-12-21 12:04:21",
-        "updated_at": "2021-12-21 13:34:23",
-        "key_category": "",
-        "id_service": 14,
-        "status": "accepted"
-    },
-    {
-        "id": 21905,
-        "title": "Title 1",
-        "description": "Description 1",
-        "photo_url": None,
-        "thumbnail_url": None,
-        "latitude": 49.603071407305265,
-        "longitude": 6.132741055464037,
-        "created_at": "2021-12-21 12:04:21",
-        "updated_at": "2021-12-21 13:34:23",
-        "key_category": "",
-        "id_service": 14,
-        "status": "accepted"
-    },
-]
 
 @pytest.fixture
 def container() -> Container:
     return Container()
 
-"""
-def test_get_reports(monkeypatch, container: Container):
-    requests_mock = SimpleNamespace(json=lambda: { "reports": MOCK_REPORTS })
-    monkeypatch.setattr(requests, "get", lambda url: requests_mock)
-
-    reportit_service = container.reportit_service()
-
-    reports = reportit_service.get_reports()
-
-    assert len(reports) == 3
-
-    assert reports[0].id == 21905
-    assert reports[1].id == 21906
-    assert reports[2].id == 22323
-
-    assert reports[0].created_at == datetime(2021, 12, 21, 12, 4, 21)
-    assert reports[0].updated_at == datetime(2021, 12, 21, 13, 34, 23)
-"""
+def build_response_mock(data: dict) -> SimpleNamespace:
+    return SimpleNamespace(
+        raise_for_status=lambda: None,
+        json=lambda: data
+    )
 
 REPORT_FINISHED_WITHOUT_PHOTO_WITH_ANSWER = """
 <!DOCTYPE html>
@@ -257,3 +200,74 @@ def test_get_report_with_answers__finished_with_photo_with_answers(monkeypatch, 
     assert answer3.text == ""
     assert answer3.closing == True
     assert answer3.order == 2
+
+REPORT_RETRIEVAL_FORM_PAGE = """
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+		<meta charset="UTF-8">
+		<title>Report-it</title>
+
+		<!-- Bootstrap CSS -->
+		<link href="/assets/framework/bootstrap-5.1.3-dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+		<!-- Bootstrap & Jquery JavaScript -->
+		<script src="/assets/framework/jquery/jquery-3.6.0.min.js"></script>
+		<script src="/assets/framework/bootstrap-5.1.3-dist/js/bootstrap.bundle.min.js"></script>
+
+		<!-- Icons -->
+		<link rel="stylesheet" href="/assets/font/bootstrap-icons-1.5.0/bootstrap-icons.css">
+
+		<!-- Piwik -->
+<script type="text/javascript">
+  var _paq = _paq || [];
+  /* tracker methods like "setCustomDimension" should be called before "trackPageView" */
+  _paq.push(['trackPageView']);
+  _paq.push(['enableLinkTracking']);
+  (function() {
+    var u="//piwik.vdl.lu/";
+    _paq.push(['setTrackerUrl', u+'piwik.php']);
+    _paq.push(['setSiteId', '19']);
+    var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
+    g.type='text/javascript'; g.async=true; g.defer=true; g.src=u+'piwik.js'; s.parentNode.insertBefore(g,s);
+  })();
+</script>
+<!-- End Piwik Code -->
+    </head>
+	<body>
+		<main>
+			<div class="container-md">
+				<div class="card mb-3 border-primary">
+<div class="card-header text-white bg-primary">Search for an incident</div>
+<div class="card-body"><form class="form-horizontal" id="search_form" method="post" name="form">
+									<div class="row">
+										<label class="col-sm-12 col-xl-3" for="search_id">Search by incident number :</label>
+										<div class="col-sm-9 col-xl-7"><input type="text" class="form-control " id="search_id" name="search_id" value="" placeholder="Enter the incident number" required autocomplete="off">
+</div>
+										<input id="search_id0" name="search_id0" type="hidden" value="aa3397b33358a2c43898ec7ac22e6443" autocomplete="off">
+										<div class="col-sm-3 col-xl-2"><button type="submit" class="btn btn-primary">Search</button>
+</div>
+									</div>
+								</form></div>
+</div>
+<br>
+<a href="./index.php?lang=en" role="button" class="btn btn-primary"><span class="bi bi-chevron-left" title="" aria-hidden="true"></span> Back</a>
+			</div>
+		</main>
+    </body>
+</html>
+"""
+
+def test_extract_report_id_input_field(container: Container):
+    reportit_service = container.reportit_service()
+
+    field_name = reportit_service.extract_report_id_input_field(REPORT_RETRIEVAL_FORM_PAGE)
+
+    assert field_name == "search_id"
+
+def test_extract_nonces(container: Container):
+    reportit_service = container.reportit_service()
+
+    nonce = reportit_service.extract_nonces(REPORT_RETRIEVAL_FORM_PAGE)
+
+    assert nonce == { "search_id0": "aa3397b33358a2c43898ec7ac22e6443" }
