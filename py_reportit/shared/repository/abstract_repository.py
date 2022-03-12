@@ -1,7 +1,7 @@
 from typing import Generic, Type, TypeVar
 from abc import ABC
 
-from sqlalchemy import select, update, Column
+from sqlalchemy import select, update, Column, delete
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.query import Query
 from sqlalchemy.sql.expression import or_
@@ -75,6 +75,9 @@ class AbstractRepository(ABC, Generic[Model]):
     def create_all(self, session: Session, entities: list[Model]) -> None:
         session.add_all(entities)
         session.commit()
+
+    def delete_by_id(self, session: Session, id: int) -> None:
+        return session.execute(delete(self.model).where(self.model.id==id))
 
     def update_many(self, session: Session, values: dict, *where_clauses) -> int:
         result = session.execute(

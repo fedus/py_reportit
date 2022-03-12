@@ -6,3 +6,9 @@ class Category(BaseModel):
 
     class Config:
         orm_mode = True
+
+class CategoryPost(BaseModel):
+    label: str
+
+    class Config:
+        orm_mode = True

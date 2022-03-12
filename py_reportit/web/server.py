@@ -54,7 +54,7 @@ def build_app():
 
     container.wire(modules=[__name__, ".dependencies"], packages=[".routers"])
 
-    from py_reportit.web.routers import photos, reports, utilities, votes, authentication
+    from py_reportit.web.routers import photos, reports, utilities, votes, authentication, admin
 
     app = FastAPI(
         title="Report-It Unchained API",
@@ -86,6 +86,7 @@ def build_app():
     app.include_router(votes.router)
     app.include_router(utilities.router)
     app.include_router(authentication.router)
+    app.include_router(admin.router)
 
     app.container = container
 

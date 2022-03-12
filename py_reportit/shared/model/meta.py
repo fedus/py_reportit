@@ -35,11 +35,11 @@ class Meta(Base):
         except Exception as e:
             logger.warn(f"Could not detect language for report id {self.report.id}, exception: {e}")
             return "un"
-    
+
     @hybrid_property
     def category(self) -> Optional[Category]:
         votes = sorted(self.category_votes, key=lambda vote: vote.timestamp, reverse=True)[-50:]
-        category_ids = list(map(lambda vote: vote.category_id, votes))  
+        category_ids = list(map(lambda vote: vote.category_id, votes))
 
         if len(votes):
             most_frequent_category_id = max(set(category_ids), key=category_ids.count)

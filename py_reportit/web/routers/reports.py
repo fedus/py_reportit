@@ -67,6 +67,7 @@ def get_reports(
     if service:
         and_q.append(report.Report.service==service)
 
+    # 0 might be a legit value
     if category != None:
         and_q.append(report.Report.meta.has(meta.Meta.category==category))
 
