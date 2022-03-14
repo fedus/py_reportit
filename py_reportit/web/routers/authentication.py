@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Depends, Form, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from datetime import timedelta
 from dependency_injector.wiring import Provide, inject
 from sqlalchemy.orm import Session
+from jose import JWTError, jwt
 
 from py_reportit.shared.config.container import Container
 from py_reportit.shared.repository.user import UserRepository
-from py_reportit.web.schema.token import Token
+from py_reportit.web.schema.token import Token, TokenData
 from py_reportit.web.schema.user import User
-from py_reportit.web.dependencies import authenticate_user, create_access_token, get_current_active_user, get_session
+from py_reportit.web.dependencies import authenticate_user, get_current_active_user, get_session, credentials_exception, create_access_token, create_refresh_token
 
 router = APIRouter(tags=["authentication"], prefix="/auth")
 
@@ -33,7 +33,6 @@ async def register(
 @inject
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
-    config: dict = Depends(Provide[Container.config]),
     session: Session = Depends(get_session)
 ):
     user = authenticate_user(session, form_data.username, form_data.password)
@@ -45,12 +44,50 @@ async def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    access_token_expires = timedelta(minutes=int(config.get("JWT_ACCESS_TOKEN_EXPIRE_MINUTES")))
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
+    token_data = TokenData(username=user.username)
+
+    access_token = create_access_token(token_data)
+    refresh_token = create_refresh_token(token_data)
+
+    return Token(
+        access_token=access_token,
+        refresh_token=refresh_token, 
+        token_type="bearer"
     )
 
-    return {"access_token": access_token, "token_type": "bearer"}
+@router.post("/refresh", response_model=Token)
+@inject
+async def refresh_token(
+    grant_type: str = Form(...),
+    refresh_token: str = Form(...),
+    config: dict = Depends(Provide[Container.config]),
+):
+    if grant_type != "refresh_token":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    try:
+        payload = jwt.decode(refresh_token, config.get("JWT_SECRET_KEY"), algorithms=[config.get("JWT_ALGORITHM")])
+        username: str = payload.get("sub")
+
+        if username is None:
+            raise credentials_exception
+
+        token_data = TokenData(username=username)
+
+    except JWTError:
+        raise credentials_exception
+
+    access_token = create_access_token(token_data)
+    refresh_token = create_refresh_token(token_data)
+
+    return Token(
+        access_token=access_token,
+        refresh_token=refresh_token, 
+        token_type="bearer"
+    )
 
 @router.get("/me", response_model=User)
 async def read_users_me(current_user: User = Depends(get_current_active_user)):
