@@ -32,7 +32,7 @@ class VoteService:
 
         if not report_meta or not category:
             raise VoteException(f"Could not persist vote because report {report_id} or category {category_id} were not found")
-        
+
         existing_vote = self.category_vote_repository.get_for_meta_and_user_id(session, report_meta.id, user_id)
 
         if existing_vote:

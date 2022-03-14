@@ -28,7 +28,7 @@ class MetaRepository(AbstractRepository[Meta]):
             return choice(metas_with_zero_votes)
 
         lowest_vote_count = session.execute(select(func.min(Meta.vote_count)).where(not_(Meta.category_votes.any(MetaCategoryVote.user_id == user_id)))).scalar()
-        
+
         if not lowest_vote_count:
             logger.debug(f"No random report meta could be found user {user_id}, returning random choice ...")
 

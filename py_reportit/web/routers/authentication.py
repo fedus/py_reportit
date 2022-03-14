@@ -1,15 +1,33 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Form, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
 from dependency_injector.wiring import Provide, inject
 from sqlalchemy.orm import Session
 
 from py_reportit.shared.config.container import Container
+from py_reportit.shared.repository.user import UserRepository
 from py_reportit.web.schema.token import Token
 from py_reportit.web.schema.user import User
 from py_reportit.web.dependencies import authenticate_user, create_access_token, get_current_active_user, get_session
 
 router = APIRouter(tags=["authentication"], prefix="/auth")
+
+@router.post("/register", status_code=201)
+@inject
+async def register(
+    username = Form(..., description="Username to be registered"),
+    password = Form(..., description="Password to be used with new account"),
+    user_repository: UserRepository = Depends(Provide[Container.user_repository]),
+    session: Session = Depends(get_session)
+):
+    if user_repository.get_by_username(session, username):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Username not available",
+        )
+
+    new_user = User(username=username, password=password)
+    user_repository.create(session, new_user)
 
 @router.post("/token", response_model=Token)
 @inject
