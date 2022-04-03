@@ -19,6 +19,12 @@ root_path = config.get("ROOT_PATH", None)
 token_url = f"{root_path}/auth/token" if root_path else "/auth/token"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=token_url)
 
+credentials_exception = HTTPException(
+    status_code=status.HTTP_401_UNAUTHORIZED,
+    detail="Could not validate credentials",
+    headers={"WWW-Authenticate": "Bearer"},
+)
+
 def get_session(request: Request):
     sessionmaker = request.app.container.sessionmaker()
     session = sessionmaker()
@@ -47,7 +53,7 @@ def authenticate_user(
     return user
 
 @inject
-def create_access_token(
+def create_token(
     data: dict,
     expires_delta: timedelta | None = None,
     config: dict = Depends(Provide[Container.config])
@@ -71,12 +77,6 @@ async def get_current_user(
     user_repository: UserRepository = Depends(Provide[Container.user_repository]),
     session: Session = Depends(get_session)
 ):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-
     try:
         payload = jwt.decode(token, config.get("JWT_SECRET_KEY"), algorithms=[config.get("JWT_ALGORITHM")])
         username: str = payload.get("sub")
@@ -96,6 +96,29 @@ async def get_current_user(
 
     return user
 
+@inject
+def create_access_token(
+    token_data: TokenData,
+    config: dict = Depends(Provide[Container.config]),
+):
+    access_token_expires = timedelta(minutes=int(config.get("JWT_ACCESS_TOKEN_EXPIRE_MINUTES")))
+    access_token = create_token(
+        data={"sub": token_data.username}, expires_delta=access_token_expires
+    )
+
+    return access_token
+
+@inject
+def create_refresh_token(
+    token_data: TokenData,
+    config: dict = Depends(Provide[Container.config]),
+):
+    refresh_token_expires = timedelta(minutes=int(config.get("JWT_REFRESH_TOKEN_EXPIRE_MINUTES")))
+    refresh_token = create_token(
+        data={"sub": token_data.username}, expires_delta=refresh_token_expires
+    )
+
+    return refresh_token
 
 async def get_current_active_user(current_user: User = Depends(get_current_user)):
     if current_user.disabled:
