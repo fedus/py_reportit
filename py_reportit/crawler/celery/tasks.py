@@ -123,6 +123,8 @@ def chained_crawl(
     current_crawl_item.stop_condition_hit = False
     self.session.commit()
 
+    run_post_processors.delay(immediate_run=True)
+
     next_crawl_item = crawler.get_next_waiting_crawl_item(self.session, current_crawl)
 
     if not next_crawl_item:
@@ -150,8 +152,6 @@ def chained_crawl(
     current_crawl.current_task_id = next_task.id
 
     self.session.commit()
-
-    run_post_processors.delay(immediate_run=True)
 
 
 @shared_task(name="tasks.launch_chained_crawl", base=DBTask, bind=True)
