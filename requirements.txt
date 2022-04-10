@@ -41,7 +41,7 @@ oauthlib==3.1.1
 orjson==3.6.3
 packaging==21.0
 passlib==1.7.4
-Pillow==9.0.0
+Pillow==9.1.0
 pluggy==1.0.0
 promise==2.3
 prompt-toolkit==3.0.24
