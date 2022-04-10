@@ -199,13 +199,18 @@ class CrawlerService:
         )
 
         # We want to keep the position of the last report in the db at the same position in case it matches the stop
-        # condition. If the last report in the db is already "closed", we currently run into a situation where the
-        # stop condition cannot be met and unnecessary crawls are performed. To be fixed / improved.
+        # condition.
         all_combined_ids = random.sample(
             recent_ids_without_last, len(recent_ids_without_last)
         ) + recent_ids_last_as_list + lookahead_ids
 
-        relevant_combined_ids = [r_id for r_id in all_combined_ids if r_id not in closed_recent_report_ids]
+        # In a similar vein, we want to fetch the last report even if it has already been closed, so a potential
+        # stop condition can trigger.
+        closed_recent_report_ids_without_last = [
+            r_id for r_id in closed_recent_report_ids if r_id not in recent_ids_last_as_list
+        ]
+
+        relevant_combined_ids = [r_id for r_id in all_combined_ids if r_id not in closed_recent_report_ids_without_last]
 
         crawl_times = self.generate_crawl_times(len(relevant_combined_ids), immediate=immediate)
 
