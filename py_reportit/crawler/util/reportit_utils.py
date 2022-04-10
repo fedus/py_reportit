@@ -150,7 +150,7 @@ class CrontabParseException(Exception):
 def filter_pp(pps: list[abstract_pp.PostProcessor], immediate_run: bool = False) -> list[abstract_pp.PostProcessor]:
     return list(filter(lambda pp: pp.immediate_run == immediate_run, pps))
 
-pretty_format_time: Callable[[datetime], str] = lambda dtime: dtime.strftime("%Y/%m/%d %H:%M:%S")
+pretty_format_time: Callable[[datetime | Arrow], str] = lambda dtime: dtime.strftime("%Y/%m/%d %H:%M:%S")
 
 # The following constants come from python-twitter
 # https://github.com/bear/python-twitter/blob/master/twitter/twitter_utils.py
