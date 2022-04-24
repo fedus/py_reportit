@@ -90,6 +90,8 @@ def chained_crawl(
 
         logger.info(f"Successfully processed report with id {current_report_id}, title: {fetched_report.title}")
 
+        run_post_processors.delay(immediate_run=True)
+
         if positions_are_rougly_equal(
             fetched_report.latitude,
             fetched_report.longitude,
@@ -122,8 +124,6 @@ def chained_crawl(
 
     current_crawl_item.stop_condition_hit = False
     self.session.commit()
-
-    run_post_processors.delay(immediate_run=True)
 
     next_crawl_item = crawler.get_next_waiting_crawl_item(self.session, current_crawl)
 
