@@ -3,9 +3,10 @@ from sqlalchemy.orm import relationship
 from sqlalchemy import Column, DateTime, Boolean, SmallInteger, Integer, UnicodeText, ForeignKey
 
 from py_reportit.shared.model.orm_base import Base
+from py_reportit.shared.util.anonymiser import anonymise
+
 
 class ReportAnswer(Base):
-
     __tablename__ = 'report_answer'
 
     id = Column(Integer, primary_key=True)
@@ -16,6 +17,12 @@ class ReportAnswer(Base):
     text = Column(UnicodeText)
     closing = Column(Boolean, default=False)
     meta = relationship("ReportAnswerMeta", uselist=False, backref="answer")
+
+    @property
+    def text_anon(self) -> str:
+        if self.text:
+            return anonymise(self.text)
+        return ""
 
     def __repr__(self):
         repr = f'<ReportAnswer\

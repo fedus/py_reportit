@@ -6,6 +6,7 @@ from sqlalchemy import Column, Integer, String, Unicode, UnicodeText, Numeric, D
 
 from py_reportit.shared.model.orm_base import Base
 from py_reportit.shared.model.report_answer import ReportAnswer
+from py_reportit.shared.util.anonymiser import anonymise
 
 class Report(Base):
 
@@ -24,6 +25,12 @@ class Report(Base):
     status = Column(Unicode(50))
     answers = relationship("ReportAnswer", uselist=True, backref="report")
     meta = relationship("Meta", uselist=False, backref="report")
+
+    @property
+    def description_anon(self) -> str:
+        if self.description:
+            return anonymise(self.description)
+        return ""
 
     @hybrid_property
     def service(self) -> Optional[str]:

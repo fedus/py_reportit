@@ -10,6 +10,7 @@ class Report(BaseModel):
     id: int
     title: Optional[str]
     description: Optional[str]
+    #description_anon: Optional[str]
     has_photo: Optional[bool]
     latitude: Optional[float]
     longitude: Optional[float]

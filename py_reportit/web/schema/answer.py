@@ -8,6 +8,7 @@ class Answer(BaseModel):
     created_at: datetime
     author: str
     text: Optional[str]
+    #text_anon: Optional[str]
     closing: bool
     meta: AnswerMeta
 
