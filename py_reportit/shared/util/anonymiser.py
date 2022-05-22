@@ -3,11 +3,15 @@ from typing import Callable
 from toolz import pipe
 
 ANONYMIZER_PAIRS: list[tuple[str, re.Pattern]] = [
-    ("[name redacted]",
+    ("[name removed]",
      re.compile(r"^(?![Ss]ervice|[vV]ielen|[vV]illm|der |[yY]ours |[mM]eilleures |[mM]erci )([a-zA-Z]*|[a-zA-Z]\.) [a-zA-Z]+\s*$", flags=re.MULTILINE)),
-    ("[email redacted]", re.compile(
+    (r"\1 [name removed]",
+     re.compile(r"(monsieur|madame|här|herr|frau) +(([a-zA-Z]* |[a-zA-Z]\. )?[a-zA-Z]+)\s*[,\.]?$", flags=re.MULTILINE|re.IGNORECASE)),
+    (r"\1 [name removed] ",
+     re.compile(r"([mM]onsieur|[mM]adame|[hH]är|[hH]err|[fF]rau) +(([A-Z][a-zA-Z]+ |[A-Z]\.? )?[A-Z][a-zA-Z]+)\s*", flags=re.MULTILINE)),
+    ("[email removed]", re.compile(
         r"([-!#-'*+/-9=?A-Z^-~]+(\.[-!#-'*+/-9=?A-Z^-~]+)*|\"([]!#-[^-~ \t]|(\\[\t -~]))+\")@([-!#-'*+/-9=?A-Z^-~]+(\.[-!#-'*+/-9=?A-Z^-~]+)*|\[[\t -Z^-~]*])")),
-    ("[phone redacted]", re.compile(r"6\d1[- ]?\d{2}[- ]?\d[- ]?\d[- ]?\d{2}"))
+    ("[phone removed]", re.compile(r"\d(?:\W*\d){5,}"))
 ]
 
 
