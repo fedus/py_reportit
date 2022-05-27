@@ -98,7 +98,10 @@ class Twitter(PostProcessor):
         logger.info(f"Tweeting report {report.id}")
         media_filename = f"{self.config.get('PHOTO_DOWNLOAD_FOLDER')}/{report.id}.jpg" if report.has_photo else None
         title = f"{report.title}\n" if report.has_title else ""
-        text = f"📩 {report.created_at.strftime('%Y-%m-%d')}\n{title}\n{report.description_anon}"
+        location = f" 📍 {report.meta.address_neighbourhood + ', ' if report.meta.address_neighbourhood else ''}" \
+                   f"{report.meta.address_street if report.meta.address_street else ''}" \
+            if (report.meta.address_street or report.meta.address_neighbourhood) else ""
+        text = f"📩 {report.created_at.strftime('%Y-%m-%d')} #⃣ {report.id}{location}\n{title}\n{report.description_anon}"
         add_link = bool(int(self.config.get("TWITTER_ADD_REPORT_LINK")))
         link = self.config.get("REPORT_LINK_BASE")
         extra_parts = [f"💬 Follow this report's progress at {link}{report.id}"] if add_link else []
