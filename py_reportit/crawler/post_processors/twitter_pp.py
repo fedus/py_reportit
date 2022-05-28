@@ -98,8 +98,7 @@ class Twitter(PostProcessor):
         logger.info(f"Tweeting report {report.id}")
         media_filename = f"{self.config.get('PHOTO_DOWNLOAD_FOLDER')}/{report.id}.jpg" if report.has_photo else None
         title = f"{report.title}\n" if report.has_title else ""
-        location = f" 📍 {report.meta.address_neighbourhood + ', ' if report.meta.address_neighbourhood else ''}" \
-                   f"{report.meta.address_street if report.meta.address_street else ''}" \
+        location = f"\n📍 {', '.join(filter(lambda element: element, [report.meta.address_neighbourhood, report.meta.address_street]))}" \
             if (report.meta.address_street or report.meta.address_neighbourhood) else ""
         text = f"📩 {report.created_at.strftime('%Y-%m-%d')} #⃣ {report.id}{location}\n{title}\n{report.description_anon}"
         add_link = bool(int(self.config.get("TWITTER_ADD_REPORT_LINK")))
@@ -122,7 +121,7 @@ class Twitter(PostProcessor):
         last_tweet_id = get_last_tweet_id(report)
 
         if not last_tweet_id:
-            logger.warn("Not tweeting %s because no last tweet id could be found", answer)
+            logger.warning("Not tweeting %s because no last tweet id could be found", answer)
             return
 
         logger.info("Tweeting %s, answering to tweet id %s", answer, last_tweet_id)
@@ -137,7 +136,7 @@ class Twitter(PostProcessor):
         tweet_metas = [AnswerMetaTweet(order=order, type="answer", tweet_id=message_id) for order, message_id in enumerate(tweet_ids)]
 
         if answer.meta.closing_type == ClosingType.PARTIALLY_CLOSED:
-            partial_closing_text = "⚠️ It appears as if the city has stated that it will answer via snail mail, and the report is not actually closed.\n\nUnfortunately, this renders the outcome of this report opaque, and the progress (if any) will not be publicly accessible."
+            partial_closing_text = "⚠️ It looks like the city has stated that it will answer via snail mail, and the report is not actually closed.\n\nUnfortunately, this renders the outcome of this report opaque, and the progress (if any) will not be publicly accessible."
             partial_closing_tweet_ids = self.tweet_service.tweet_thread(partial_closing_text, answer_to=tweet_ids[-1])
             tweet_metas.extend([AnswerMetaTweet(order=order, type="partial_closure", tweet_id=message_id) for order, message_id in enumerate(partial_closing_tweet_ids)])
 
