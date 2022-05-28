@@ -21,6 +21,7 @@ from py_reportit.crawler.post_processors.abstract_pp import PostProcessorDispatc
 from py_reportit.crawler.post_processors.twitter_pp import Twitter
 from py_reportit.crawler.post_processors.geocode_pp import Geocode
 from py_reportit.shared.service.vote_service import VoteService
+from py_reportit.shared.service.cache_service import CacheService
 
 
 post_processors = [Geocode, Twitter]
@@ -56,7 +57,13 @@ class Container(containers.DeclarativeContainer):
     user_repository = providers.Factory(UserRepository)
 
     # Services
-    reportit_service = providers.Factory(ReportItService, config=config, requests_session=requests_session)
+    cache_service = providers.Singleton(CacheService)
+    reportit_service = providers.Factory(
+        ReportItService,
+        config=config,
+        requests_session=requests_session,
+        cache_service=cache_service
+    )
     geocoder_service = providers.Factory(GeocoderService, config=config, requests_session=requests_session)
     photo_service = providers.Factory(PhotoService, config=config)
     vote_service = providers.Factory(

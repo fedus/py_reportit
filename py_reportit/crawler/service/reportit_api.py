@@ -1,19 +1,21 @@
-import re, logging, json
-
-from typing import Callable, Optional
+import json
+import logging
+import re
 from base64 import b64decode
-from bs4.element import ResultSet
-from bs4 import BeautifulSoup
 from datetime import datetime
+from typing import Callable, Optional
+
+from bs4 import BeautifulSoup
+from bs4.element import ResultSet
 from requests.models import Response
 from requests.sessions import Session
 from toolz.dicttoolz import dissoc
 
-from py_reportit.shared.model import *
+from py_reportit.shared.model.answer_meta import ReportAnswerMeta
 from py_reportit.shared.model.meta import Meta
 from py_reportit.shared.model.report import Report
 from py_reportit.shared.model.report_answer import ReportAnswer
-from py_reportit.shared.model.answer_meta import ReportAnswerMeta
+from py_reportit.shared.service.cache_service import CacheService
 
 logger = logging.getLogger(f"py_reportit.{__name__}")
 
@@ -22,9 +24,10 @@ class ReportItService:
     DATE_FORMAT_API = '%Y-%m-%d %H:%M:%S'
     DATE_FORMAT_WEB = '%d.%m.%Y %H:%M'
 
-    def __init__(self, config: dict, requests_session: Session):
+    def __init__(self, config: dict, requests_session: Session, cache_service: CacheService):
         self.config = config
         self.requests_session = requests_session
+        self.cache_service = cache_service
 
     def get_latest_truncated_report(self) -> Report:
         r = self.requests_session.crawler_get(self.config.get('REPORTIT_API_URL'))
@@ -116,23 +119,40 @@ class ReportItService:
 
         return [ReportAnswer(**message_dict, order=order, report_id=reportId, meta=ReportAnswerMeta()) for order, message_dict in enumerate(message_dicts)]
 
-    def fetch_report_page(self, reportId: int) -> Response:
-        r = self.requests_session.crawler_get(
-            self.config.get("REPORTIT_API_ANSWER_URL"),
-            params={ "session_number": reportId }
-        )
+    def fetch_report_page(self, reportId: int, is_retry: bool = False) -> Response:
+        report_id_input_field_name, nonces = self.get_report_id_input_field_name_and_nonces_from_cache()
 
-        nonces = self.extract_nonces(r.text)
-        report_id_input_field_name = self.extract_report_id_input_field(r.text)
+        if report_id_input_field_name and nonces:
+            logger.info(f"Using CACHED nonce(s) {nonces} and report id input field name {report_id_input_field_name}")
+        else:
+            r = self.requests_session.crawler_get(
+                self.config.get("REPORTIT_API_ANSWER_URL"),
+                params={ "session_number": reportId }
+            )
 
-        logger.info(f"Using nonce(s) {nonces} and report id input field name {report_id_input_field_name}")
+            nonces = self.extract_nonces(r.text)
+            report_id_input_field_name = self.extract_report_id_input_field(r.text)
 
-        return self.requests_session.crawler_post(
+            logger.info(f"Using UNCACHED nonce(s) {nonces} and report id input field name {report_id_input_field_name}")
+
+            self.cache_report_id_input_field_name_and_nonces(report_id_input_field_name, nonces)
+
+        r = self.requests_session.crawler_post(
             self.config.get("REPORTIT_API_ANSWER_URL"),
             { report_id_input_field_name: reportId, **nonces, "session_number": reportId },
             timeout=int(self.config.get("FETCH_REPORTS_TIMEOUT_SECONDS"))
         )
-    
+
+        if r.status != 200 and not is_retry:
+            logger.warning(f"Failed to retrieve report page for {reportId}, status was {r.status},"
+                           "clearing cache and retrying ...")
+            self.clear_report_id_input_field_name_and_nonces_cache()
+            return self.fetch_report_page(reportId, True)
+        elif r.status != 200 and is_retry:
+            raise ReportFetchException(f"Failed while retrying to retrieve report page for {reportId}, status was {r.status}")
+        else:
+            return r
+
     def extract_report_id_input_field(self, html) -> str:
         soup = BeautifulSoup(html, 'html.parser')
 
@@ -158,6 +178,20 @@ class ReportItService:
 
         return { field["name"]: field["value"] for field in hidden_fields }
 
+    def cache_report_id_input_field_name_and_nonces(
+            self, report_id_input_field_name: str | None,
+            nonces: dict | None
+    ) -> None:
+        self.cache_service.set("report_id_input_field_name", report_id_input_field_name)
+        self.cache_service.set("nonces", nonces)
+
+    def get_report_id_input_field_name_and_nonces_from_cache(self) -> tuple[str | None, str | None]:
+        return self.cache_service.get("report_id_input_field_name"), self.cache_service.get("nonces")
+
+    def clear_report_id_input_field_name_and_nonces_cache(self) -> None:
+        self.cache_service.unset("report_id_input_field_name")
+        self.cache_service.unset("nonces")
+
     @staticmethod
     def extract_from_message_block(block: ResultSet) -> dict:
         author = block.select(".card-header i")[0].text.strip()
@@ -176,6 +210,9 @@ class ReportItService:
         }
 
 class ReportNotFoundException(Exception):
+    pass
+
+class ReportFetchException(Exception):
     pass
 
 class ReportInputFieldExtractionException(Exception):

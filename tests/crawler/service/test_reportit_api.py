@@ -1,21 +1,28 @@
 import pytest
+import json
 
 from types import SimpleNamespace
 from datetime import datetime
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 
+from py_reportit.crawler.service.reportit_api import ReportFetchException
 from py_reportit.shared.config.container import Container
 from py_reportit.shared.model.report_answer import ReportAnswer
 
+
 @pytest.fixture
 def container() -> Container:
-    return Container()
+    return Container(config={"FETCH_REPORTS_TIMEOUT_SECONDS": 1})
 
-def build_response_mock(data: dict) -> SimpleNamespace:
+
+def build_response_mock(data: str, status: int = 200) -> SimpleNamespace:
     return SimpleNamespace(
         raise_for_status=lambda: None,
-        json=lambda: data
+        json=lambda: json.loads(data),
+        text=data,
+        status=status
     )
+
 
 REPORT_FINISHED_WITHOUT_PHOTO_WITH_ANSWER = """
 <!DOCTYPE html>
@@ -68,6 +75,7 @@ REPORT_FINISHED_WITHOUT_PHOTO_WITH_ANSWER = """
 </html>
 """
 
+
 def test_get_report_with_answers__finished_without_photo_with_answer(monkeypatch, container: Container):
     reportit_service = container.reportit_service()
 
@@ -95,6 +103,7 @@ def test_get_report_with_answers__finished_without_photo_with_answer(monkeypatch
     assert answer.text == "Ceci n'est pas une pipe"
     assert answer.closing == True
     assert answer.order == 0
+
 
 REPORT_FINISHED_WITH_PHOTO_WITH_ANSWERS = """
 <!DOCTYPE html>
@@ -157,7 +166,8 @@ REPORT_FINISHED_WITH_PHOTO_WITH_ANSWERS = """
 </html>
 """
 
-def test_get_report_with_answers__finished_with_photo_with_answers(monkeypatch, container: Container):    
+
+def test_get_report_with_answers__finished_with_photo_with_answers(monkeypatch, container: Container):
     reportit_service = container.reportit_service()
 
     requests_mock = SimpleNamespace(text=REPORT_FINISHED_WITH_PHOTO_WITH_ANSWERS)
@@ -200,6 +210,7 @@ def test_get_report_with_answers__finished_with_photo_with_answers(monkeypatch, 
     assert answer3.text == ""
     assert answer3.closing == True
     assert answer3.order == 2
+
 
 REPORT_RETRIEVAL_FORM_PAGE = """
 <!DOCTYPE html>
@@ -258,6 +269,7 @@ REPORT_RETRIEVAL_FORM_PAGE = """
 </html>
 """
 
+
 def test_extract_report_id_input_field(container: Container):
     reportit_service = container.reportit_service()
 
@@ -265,9 +277,103 @@ def test_extract_report_id_input_field(container: Container):
 
     assert field_name == "search_id"
 
+
 def test_extract_nonces(container: Container):
     reportit_service = container.reportit_service()
 
     nonce = reportit_service.extract_nonces(REPORT_RETRIEVAL_FORM_PAGE)
 
-    assert nonce == { "search_id0": "aa3397b33358a2c43898ec7ac22e6443" }
+    assert nonce == {"search_id0": "aa3397b33358a2c43898ec7ac22e6443"}
+
+
+def test_fetch_report_page(container: Container):
+    # Cache empty, successful page fetch
+    r_session_mock = Mock()
+    r_session_mock.crawler_get.return_value = build_response_mock(REPORT_RETRIEVAL_FORM_PAGE)
+    r_session_mock.crawler_post.return_value = build_response_mock(REPORT_FINISHED_WITHOUT_PHOTO_WITH_ANSWER)
+
+    with container.requests_session.override(r_session_mock):
+        reportit_service = container.reportit_service()
+
+        response = reportit_service.fetch_report_page(392)
+
+    r_session_mock.crawler_get.assert_called_once_with(None, params={"session_number": 392})
+    r_session_mock.crawler_post.assert_called_once_with(
+        None,
+        {"search_id": 392, "search_id0": "aa3397b33358a2c43898ec7ac22e6443", "session_number": 392},
+        timeout=1
+    )
+    assert response.text == REPORT_FINISHED_WITHOUT_PHOTO_WITH_ANSWER
+
+    # Cache full, successful page fetch
+    r_session_mock = Mock()
+    r_session_mock.crawler_get.return_value = build_response_mock(REPORT_RETRIEVAL_FORM_PAGE)
+    r_session_mock.crawler_post.return_value = build_response_mock(REPORT_FINISHED_WITHOUT_PHOTO_WITH_ANSWER)
+
+    with container.requests_session.override(r_session_mock):
+        reportit_service = container.reportit_service()
+
+        response = reportit_service.fetch_report_page(392)
+
+    r_session_mock.crawler_get.assert_not_called()
+    r_session_mock.crawler_post.assert_called_once_with(
+        None,
+        {"search_id": 392, "search_id0": "aa3397b33358a2c43898ec7ac22e6443", "session_number": 392},
+        timeout=1
+    )
+    assert response.text == REPORT_FINISHED_WITHOUT_PHOTO_WITH_ANSWER
+
+    # Cache full, unsuccessful page fetch at first try
+    r_session_mock = Mock()
+    r_session_mock.crawler_get.return_value = build_response_mock(REPORT_RETRIEVAL_FORM_PAGE)
+    r_session_mock.crawler_post.side_effect = [
+        build_response_mock(None, 204),
+        build_response_mock(REPORT_FINISHED_WITHOUT_PHOTO_WITH_ANSWER, 200)
+    ]
+
+    with container.requests_session.override(r_session_mock):
+        reportit_service = container.reportit_service()
+
+        response = reportit_service.fetch_report_page(392)
+
+    r_session_mock.crawler_get.assert_called_once_with(None, params={"session_number": 392})
+    r_session_mock.crawler_post.has_calls([
+        call(
+            None,
+            {"search_id": 392, "search_id0": "aa3397b33358a2c43898ec7ac22e6443", "session_number": 392},
+            timeout=1
+        ),
+        call(
+            None,
+            {"search_id": 392, "search_id0": "aa3397b33358a2c43898ec7ac22e6443", "session_number": 392},
+            timeout=1
+        )
+    ], any_order=False)
+    assert r_session_mock.crawler_post.call_count == 2
+    assert response.text == REPORT_FINISHED_WITHOUT_PHOTO_WITH_ANSWER
+
+    # Cache full, unsuccessful page fetch at first and second try
+    r_session_mock = Mock()
+    r_session_mock.crawler_get.return_value = build_response_mock(REPORT_RETRIEVAL_FORM_PAGE)
+    r_session_mock.crawler_post.return_value = build_response_mock(None, 204)
+
+    with container.requests_session.override(r_session_mock):
+        reportit_service = container.reportit_service()
+
+        with pytest.raises(ReportFetchException):
+            reportit_service.fetch_report_page(392)
+
+    r_session_mock.crawler_get.assert_called_once_with(None, params={"session_number": 392})
+    r_session_mock.crawler_post.has_calls([
+        call(
+            None,
+            {"search_id": 392, "search_id0": "aa3397b33358a2c43898ec7ac22e6443", "session_number": 392},
+            timeout=1
+        ),
+        call(
+            None,
+            {"search_id": 392, "search_id0": "aa3397b33358a2c43898ec7ac22e6443", "session_number": 392},
+            timeout=1
+        )
+    ], any_order=False)
+    assert r_session_mock.crawler_post.call_count == 2
