@@ -20,7 +20,7 @@ def build_response_mock(data: str, status: int = 200) -> SimpleNamespace:
         raise_for_status=lambda: None,
         json=lambda: json.loads(data),
         text=data,
-        status=status
+        status_code=status
     )
 
 

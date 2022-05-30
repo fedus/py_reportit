@@ -143,13 +143,13 @@ class ReportItService:
             timeout=int(self.config.get("FETCH_REPORTS_TIMEOUT_SECONDS"))
         )
 
-        if r.status != 200 and not is_retry:
-            logger.warning(f"Failed to retrieve report page for {reportId}, status was {r.status},"
+        if r.status_code != 200 and not is_retry:
+            logger.warning(f"Failed to retrieve report page for {reportId}, status was {r.status_code},"
                            "clearing cache and retrying ...")
             self.clear_report_id_input_field_name_and_nonces_cache()
             return self.fetch_report_page(reportId, True)
-        elif r.status != 200 and is_retry:
-            raise ReportFetchException(f"Failed while retrying to retrieve report page for {reportId}, status was {r.status}")
+        elif r.status_code != 200 and is_retry:
+            raise ReportFetchException(f"Failed while retrying to retrieve report page for {reportId}, status was {r.status_code}")
         else:
             return r
 
