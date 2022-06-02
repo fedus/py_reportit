@@ -135,7 +135,8 @@ class ReportItService:
 
             logger.info(f"Using UNCACHED nonce(s) {nonces} and report id input field name {report_id_input_field_name}")
 
-            self.cache_report_id_input_field_name_and_nonces(report_id_input_field_name, nonces)
+            # HOTFIX
+            #self.cache_report_id_input_field_name_and_nonces(report_id_input_field_name, nonces)
 
         r = self.requests_session.crawler_post(
             self.config.get("REPORTIT_API_ANSWER_URL"),
