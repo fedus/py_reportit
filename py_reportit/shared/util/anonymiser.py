@@ -6,7 +6,7 @@ ANONYMISER_PAIRS: list[tuple[str, re.Pattern]] = [
     ("[name removed]",
      re.compile(r"^(?![Ss]ervice|[vV]ielen|[vV]illm|der |[yY]ours |[mM]eilleures |[mM]erci )([A-Za-zÀ-ÖØ-öø-ÿ]*|[A-Za-zÀ-ÖØ-öø-ÿ]\.) [A-Za-zÀ-ÖØ-öø-ÿ]+\s*$", flags=re.MULTILINE)),
     (r"\1 [name removed]",
-     re.compile(r"(monsieur|madame|här|herr|frau) +(([A-Za-zÀ-ÖØ-öø-ÿ]* |[A-Za-zÀ-ÖØ-öø-ÿ]\. )?[A-Za-zÀ-ÖØ-öø-ÿ]+)\s*[,\.]?$", flags=re.MULTILINE|re.IGNORECASE)),
+     re.compile(r"(monsieur|madame|här|herr|frau|dear) +(([A-Za-zÀ-ÖØ-öø-ÿ]* |[A-Za-zÀ-ÖØ-öø-ÿ]\. )?[A-Za-zÀ-ÖØ-öø-ÿ]+)\s*[,\.]?$", flags=re.MULTILINE|re.IGNORECASE)),
     (r"\1 [name removed] ",
      re.compile(r"([mM]onsieur|[mM]adame|[hH]är|[hH]err|[fF]rau) +(([A-Z][A-Za-zÀ-ÖØ-öø-ÿ]+ |[A-Z]\.? )?[A-Z][A-Za-zÀ-ÖØ-öø-ÿ]+)\s*", flags=re.MULTILINE)),
     ("[email removed]", re.compile(
