@@ -14,6 +14,7 @@ celery==5.2.3
 certifi==2021.5.30
 cffi==1.15.0
 chardet==4.0.0
+charset-normalizer==2.1.1
 click==8.0.3
 click-didyoumean==0.3.0
 click-plugins==1.1.1
@@ -23,6 +24,7 @@ dependency-injector==4.38.0
 dnspython==2.1.0
 ecdsa==0.17.0
 email-validator==1.1.3
+exceptiongroup==1.0.4
 fastapi==0.87.0
 graphene==2.1.9
 graphql-core==2.3.2
@@ -55,7 +57,7 @@ pydantic==1.8.2
 PyMySQL==1.0.2
 pyparsing==2.4.7
 PySocks==1.7.1
-pytest==6.2.5
+pytest==7.2.0
 python-dateutil==2.8.2
 python-dotenv==0.19.0
 python-editor==1.0.4
@@ -63,7 +65,7 @@ python-jose==3.3.0
 python-multipart==0.0.5
 pytz==2021.3
 PyYAML==5.4.1
-requests==2.25.1
+requests==2.28.1
 requests-oauthlib==1.3.0
 requests-random-user-agent==2021.5.29
 rfc3986==1.5.0
@@ -77,6 +79,7 @@ SQLAlchemy==1.4.44
 SQLAlchemy-Utils==0.38.2
 starlette==0.21.0
 toml==0.10.2
+tomli==2.0.1
 toolz==0.11.2
 tweepy==3.10.0
 typing-extensions==3.10.0.2
