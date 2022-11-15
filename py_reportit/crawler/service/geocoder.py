@@ -1,4 +1,4 @@
-import requests
+import re
 import logging
 
 from string import Template
@@ -37,7 +37,7 @@ class GeocoderService:
 
         if address_json['country_code'] == 'lu':
             street = address_json['road'] if 'road' in address_json else None
-            postcode = address_json['postcode'] if 'postcode' in address_json else None
+            postcode = self.trim_postcode(address_json['postcode']) if 'postcode' in address_json else None
             neighbourhood = address_json['suburb'] if 'suburb' in address_json else None
         else:
             logger.warning(f'Encountered geocode that is not Luxembourg: {address_json["country_code"]} for lat {latitude} and lon {longitude}, returning empty geolocation data')
@@ -47,3 +47,7 @@ class GeocoderService:
             postcode=postcode,
             neighbourhood=neighbourhood
         )
+
+    @staticmethod
+    def trim_postcode(postcode: str) -> str:
+        return re.sub(r"^L-(\d{4})", r"\1", postcode)
