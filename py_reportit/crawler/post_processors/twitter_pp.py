@@ -159,7 +159,7 @@ class TweetService:
         logger.debug("Setting Twitter authentication")
         auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
         auth.set_access_token(access_token, access_token_secret)
-        self.api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
+        self.api = tweepy.API(auth, wait_on_rate_limit=True)
 
     def upload_media(self, filename):
         if self.config.get("DEV"):
