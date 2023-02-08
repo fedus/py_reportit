@@ -12,7 +12,7 @@ class ReportAnswerRepository(AbstractRepository[ReportAnswer]):
     def update(self, session: Session, entity: ReportAnswer) -> int:
         result = session.execute(
             update(ReportAnswer)
-            .where(ReportAnswer.report_id == entity.report_id, ReportAnswer.order == entity.order)
+            .where(ReportAnswer.report_id == entity.report_id, ReportAnswer.created_at == entity.created_at, ReportAnswer.order == entity.order)
             .values({column: getattr(entity, column) for column in ReportAnswer.__table__.columns.keys() if column != "id"})
         )
         session.commit()

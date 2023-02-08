@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import pytz
 
+from operator import attrgetter
 from textwrap import TextWrapper
 from typing import Callable
 from unicodedata import normalize
@@ -43,14 +44,10 @@ def get_last_tweet_id(report: Report) -> str:
         all_answers_with_tweet_ids = list(filter(lambda answer: answer.meta.tweet_ids and len(answer.meta.tweet_ids), all_answers))
 
         if len(all_answers_with_tweet_ids):
-            newest_answer = max(all_answers_with_tweet_ids, key=lambda answer: answer.order)
+            newest_answer = max(all_answers_with_tweet_ids, key=attrgetter("created_at", "order"))
+
             answer_meta: ReportAnswerMeta = newest_answer.meta
             tweet_ids: list[AnswerMetaTweet] = answer_meta.tweet_ids
-
-            partial_closure_tweet_ids = list(filter(lambda tweet_id: tweet_id.type == "partial_closure", tweet_ids))
-
-            if len(partial_closure_tweet_ids):
-                return max(partial_closure_tweet_ids, key=lambda tweet_id: tweet_id.order).tweet_id
 
             return max(tweet_ids, key=lambda tweet_id: tweet_id.order).tweet_id
 

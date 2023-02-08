@@ -14,7 +14,7 @@ logger = logging.getLogger(f"py_reportit.{__name__}")
 retry_strategy = Retry(
     total=3,
     status_forcelist=[429, 500, 502, 503, 504],
-    method_whitelist=["HEAD", "GET", "OPTIONS", "POST"]
+    allowed_methods=["HEAD", "GET", "OPTIONS", "POST"]
 )
 
 adapter = HTTPAdapter(max_retries=retry_strategy)

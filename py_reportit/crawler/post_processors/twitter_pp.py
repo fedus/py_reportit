@@ -2,6 +2,7 @@ import logging
 import sys
 import tweepy
 
+from operator import attrgetter
 from time import sleep
 from sqlalchemy.sql.elements import and_
 from sqlalchemy.orm import Session
@@ -75,7 +76,7 @@ class Twitter(PostProcessor):
             for report in unprocessed_reports:
                 answers = sorted(
                     list(filter(lambda answer: answer.meta.do_tweet and not answer.meta.tweeted, report.answers)),
-                    key=lambda answer: answer.order
+                    key=attrgetter("created_at", "order")
                 )
                 logger.info("Processing %d answers", len(answers))
                 for answer in answers:
@@ -133,12 +134,12 @@ class Twitter(PostProcessor):
         complete_text = f"{timestamp}\n{title}{answer.text_anon}"
 
         tweet_ids = self.tweet_service.tweet_thread(complete_text, answer_to=last_tweet_id)
-        tweet_metas = [AnswerMetaTweet(order=order, type="answer", tweet_id=message_id) for order, message_id in enumerate(tweet_ids)]
+        tweet_metas = [AnswerMetaTweet(part=part, type="answer", tweet_id=message_id) for part, message_id in enumerate(tweet_ids)]
 
         if answer.meta.closing_type == ClosingType.PARTIALLY_CLOSED:
             partial_closing_text = "⚠️ It looks like the city has stated that it will answer via snail mail, and the report is not actually closed.\n\nUnfortunately, this renders the outcome of this report opaque, and the progress (if any) will not be publicly accessible."
             partial_closing_tweet_ids = self.tweet_service.tweet_thread(partial_closing_text, answer_to=tweet_ids[-1])
-            tweet_metas.extend([AnswerMetaTweet(order=order, type="partial_closure", tweet_id=message_id) for order, message_id in enumerate(partial_closing_tweet_ids)])
+            tweet_metas.extend([AnswerMetaTweet(part=part, type="partial_closure", tweet_id=message_id) for part, message_id in enumerate(partial_closing_tweet_ids)])
 
         answer.meta.tweeted = True
         answer.meta.tweet_ids = tweet_metas
