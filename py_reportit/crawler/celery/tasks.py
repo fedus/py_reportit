@@ -110,7 +110,7 @@ def chained_crawl(
     except ReportNotFoundException:
         current_crawl_item.report_found = False
         current_crawl_item.state = CrawlItemState.SUCCESS
-        logger.info(f"No report found with id {current_report_id}, skipping.")
+        logger.info(f"No report found with id {current_report_id}, skipping. (This can hide a failed nonce verification!)")
     except Timeout or MaxRetryError:
         current_crawl_item.state = CrawlItemState.FAILURE
         logger.warn(f"Retrieval of report with id {current_report_id} timed out "

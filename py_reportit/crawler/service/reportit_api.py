@@ -45,7 +45,11 @@ class ReportItService:
         r = self.fetch_report_page(reportId)
 
         if r.text.find("Sent on :") < 0:
-            raise ReportNotFoundException(f"No report found with id {reportId}")
+            if r.text.find(f"{reportId} could not be found") >= 0:
+                raise ReportNotFoundException(f"No report found with id {reportId} (this can hide a failed nonce verification!)")
+            else:
+                logger.error(f"Failed to process report with id {reportId}, received: \n{r.text}")
+                raise ReportProcessingException(f"Failed to process report with id {reportId}")
 
         soup = BeautifulSoup(r.text, 'html.parser')
 
@@ -211,6 +215,9 @@ class ReportItService:
         }
 
 class ReportNotFoundException(Exception):
+    pass
+
+class ReportProcessingException(Exception):
     pass
 
 class ReportFetchException(Exception):
