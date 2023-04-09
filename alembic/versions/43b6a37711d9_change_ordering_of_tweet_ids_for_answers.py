@@ -17,10 +17,10 @@ depends_on = None
 
 
 def upgrade():
-    op.alter_column('answer_meta_tweet', 'order', new_column_name='part')
+    op.alter_column('answer_meta_tweet', 'order', new_column_name='part', existing_type=sa.SmallInteger())
     op.add_column('answer_meta_tweet', sa.Column('order', sa.SmallInteger()))
-    op.execute('UPDATE answer_meta_tweet t, (SELECT id, row_number() OVER (PARTITION BY answer_meta_id ORDER BY answer_meta_id, tweet_id) as rn FROM `answer_meta_tweet` ORDER BY answer_meta_id, rn) r SET t.order = r.rn WHERE t.id=r.id')
+    op.execute('UPDATE answer_meta_tweet t, (SELECT id, row_number() OVER (PARTITION BY answer_meta_id ORDER BY answer_meta_id, tweet_id) as rn FROM `answer_meta_tweet` ORDER BY answer_meta_id, rn) r SET t.order = r.rn - 1 WHERE t.id=r.id')
 
 def downgrade():
     op.drop_column('answer_meta_tweet', 'order')
-    op.alter_column('answer_meta_tweet', 'part', new_column_name='order')
+    op.alter_column('answer_meta_tweet', 'part', new_column_name='order', existing_type=sa.SmallInteger())
