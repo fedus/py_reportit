@@ -147,6 +147,8 @@ class Twitter(PostProcessor):
 class TweetService:
 
     def __init__(self, config):
+        self.api = None
+        self.client = None
         self.config = config
         self.do_authentication(
             self.config.get("TWITTER_API_KEY"),
@@ -159,7 +161,13 @@ class TweetService:
         logger.debug("Setting Twitter authentication")
         auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
         auth.set_access_token(access_token, access_token_secret)
+
         self.api = tweepy.API(auth, wait_on_rate_limit=True)
+        self.client = tweepy.Client(
+            consumer_key=consumer_key, consumer_secret=consumer_secret,
+            access_token=access_token, access_token_secret=access_token_secret,
+            wait_on_rate_limit=True
+        )
 
     def upload_media(self, filename):
         if self.config.get("DEV"):
@@ -187,23 +195,22 @@ class TweetService:
         for index, part in enumerate(parts):
             expected_part_length = calc_expected_status_length(part)
             logger.debug(f"Tweeting part {index+1}/{len(parts)} (length: expected: {expected_part_length}, raw: {len(part)})")
-            tweet_params = { 'status': part }
+            tweet_params = { 'text': part }
             if index == 0 and media:
                 tweet_params['media_ids'] = [media.media_id]
             if last_status:
-                tweet_params['in_reply_to_status_id'] = last_status
-                tweet_params['auto_populate_reply_metadata'] = True
-            if lat and lon:
-                tweet_params['lat'] = lat
-                tweet_params['long'] = lon
-                tweet_params['display_coordinates'] = True
+                tweet_params['in_reply_to_tweet_id'] = last_status
+            #if lat and lon:
+            #    tweet_params['lat'] = lat
+            #    tweet_params['long'] = lon
+            #    tweet_params['display_coordinates'] = True
             logger.debug(f'Tweeting with params: {tweet_params}')
             if self.config.get("DEV"):
                 logger.debug("Not sending tweet since program is running in development mode")
                 return ["TWEET_ID1", "TWEET_ID2", "TWEET_ID3"]
             else:
                 try:
-                    last_status = self.api.update_status(**tweet_params).id
+                    last_status = self.client.create_tweet(**tweet_params).data["id"]
                 except:
                     logger.error(f"Failed while tweeting, message length: expected: {expected_part_length}, raw: {len(part)}, params: {tweet_params}")
                     raise
