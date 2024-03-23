@@ -29,6 +29,7 @@ services:
       - PMA_HOST=db
       - PMA_USER=py_reportit_bot
       - PMA_PASSWORD=py_reportit_bot
+      - UPLOAD_LIMIT=300M
 
   rabbitmq:
     image: rabbitmq:3-management
