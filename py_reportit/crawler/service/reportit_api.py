@@ -29,17 +29,14 @@ class ReportItService:
         self.requests_session = requests_session
         self.cache_service = cache_service
 
-    def get_latest_truncated_report(self) -> Report:
+    def get_raw_reports_data(self):
         r = self.requests_session.crawler_get(self.config.get('REPORTIT_API_URL'))
 
         r.raise_for_status()
 
         reports_string_raw = b64decode(re.search(self.config.get('REPORTIT_API_REPORTS_REGEX'), r.text).group(1))
         reports_string_escaped = reports_string_raw.decode('raw_unicode_escape')
-        raw_reports = json.loads(reports_string_escaped)["reports"]
-
-        most_recent_report = raw_reports[-1]
-        return Report(**dissoc(most_recent_report, "thumbnail_url"))
+        return json.loads(reports_string_escaped)["reports"]
 
     def get_report_with_answers(self, reportId: int, photo_callback: Optional[Callable[[Report, str], None]] = None) -> Report:
         r = self.fetch_report_page(reportId)

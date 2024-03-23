@@ -78,13 +78,11 @@ class CrawlerService:
             session: Session,
             ids_and_crawl_times: list[tuple[int, Arrow]],
             scheduled_at: Arrow,
-            stop_at_lat: Optional[float],
-            stop_at_lon: Optional[float],
+            raw_reports_data: Optional[dict],
     ) -> Crawl:
         crawl = Crawl(
             scheduled_at=scheduled_at,
-            stop_at_lat=stop_at_lat,
-            stop_at_lon=stop_at_lon,
+            reports_data=raw_reports_data
         )
 
         crawl_items = list(
@@ -222,16 +220,11 @@ class CrawlerService:
         last_lon = None
 
         try:
-            latest_truncated_report = self.api_service.get_latest_truncated_report()
-
-            last_lat = float(latest_truncated_report.latitude) if latest_truncated_report.latitude else None
-            last_lon = float(latest_truncated_report.longitude) if latest_truncated_report.longitude else None
-
-            logger.info(f"Setting stop condition at lat / lon: {last_lat} / {last_lon}")
+            raw_reports_data = self.api_service.get_raw_reports_data()
 
         except HTTPError:
-            logger.warning(f"Encountered error while trying to fetch latest truncated report,"
-                           f"not setting stop condition.", exc_info=True)
+            logger.warning(f"Encountered error while trying to fetch latest raw reports data",
+                           exc_info=True)
 
         try:
             logger.info(f"Processing {len(relevant_combined_ids)} reports,"
@@ -243,8 +236,7 @@ class CrawlerService:
                 session,
                 ids_and_crawl_times,
                 Arrow.now(self.timezone),
-                last_lat,
-                last_lon
+                raw_reports_data
             )
 
             next_crawl_item = self.get_next_waiting_crawl_item(session, crawl)
