@@ -3,6 +3,7 @@
 FROM python:3.11-alpine
 
 RUN apk add build-base
+RUN apk add --no-cache --upgrade bash
 
 WORKDIR /app
 

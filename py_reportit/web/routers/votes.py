@@ -19,7 +19,7 @@ router = APIRouter(tags=["votes"], prefix="/votes")
 @inject
 def cast_vote(
     vote: Vote,
-    reportId: int = Path(None, description="The ID of the report for which to cast a vote"),
+    reportId: int = Path(description="The ID of the report for which to cast a vote"),
     current_user: User = Depends(get_current_active_user),
     vote_service: VoteService = Depends(Provide[Container.vote_service]),
     session: Session = Depends(get_session)

@@ -71,7 +71,7 @@ def build_app():
         #    "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
         #},
         openapi_tags=tags_metadata,
-        root_path=config.get("ROOT_PATH", "/")
+        root_path=config.get("ROOT_PATH", "")
     )
 
     @app.exception_handler(VoteException)

@@ -124,7 +124,7 @@ def get_reports(
 @router.get("/{reportId}", response_model=Report)
 @inject
 def get_report(
-    reportId: int = Path(None, description="The ID of the report to retrieve"),
+    reportId: int = Path(description="The ID of the report to retrieve"),
     report_repository: ReportRepository = Depends(Provide[Container.report_repository]),
     session: Session = Depends(get_session)
 ):

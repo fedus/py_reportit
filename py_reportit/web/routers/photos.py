@@ -8,7 +8,7 @@ from py_reportit.shared.config import config
 router = APIRouter(tags=["photos"], prefix="/photos")
 
 @router.get("/{reportId}")
-async def get_photo(reportId: int = Path(None, description="The report ID for which the photo should be retrieved")):
+async def get_photo(reportId: int = Path(description="The report ID for which the photo should be retrieved")):
     """
     Retrieve the photo related to a given report ID.
     \f
