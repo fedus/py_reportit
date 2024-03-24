@@ -1,6 +1,8 @@
 # syntax=docker/dockerfile:1
 
-FROM python:3.10-buster
+FROM python:3.11-alpine
+
+RUN apk add build-base
 
 WORKDIR /app
 
