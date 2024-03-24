@@ -4,4 +4,4 @@ class AnswerMeta(BaseModel):
     language: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True

@@ -15,7 +15,7 @@ class User(BaseModel):
     disabled: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
     @validator("created_at", "last_login", pre=True)
     def format_datetime(cls, value: Optional[Arrow]):
