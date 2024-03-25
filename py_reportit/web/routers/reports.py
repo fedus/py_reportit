@@ -24,7 +24,7 @@ class PhotoState(str, Enum):
 
 router = APIRouter(tags=["reports"], prefix="/reports")
 
-@router.get("/", response_model=PagedReportList)
+@router.get("", response_model=PagedReportList)
 @inject
 def get_reports(
     page: str = Query(None, description="The page to retrieve for the paginated query."),
