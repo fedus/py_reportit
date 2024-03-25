@@ -4,14 +4,14 @@ import re
 import pytz
 
 from textwrap import TextWrapper
-from typing import Callable
+from typing import Callable, Optional
 from unicodedata import normalize
 from datetime import datetime
 from random import uniform
 from arrow import Arrow
 from math import ceil, floor
+from typing import TYPE_CHECKING
 
-from py_reportit.crawler.post_processors import abstract_pp
 from py_reportit.shared.model.answer_meta import ReportAnswerMeta
 from py_reportit.shared.model.answer_meta_tweet import AnswerMetaTweet
 from py_reportit.shared.model.report_answer import ReportAnswer
@@ -19,23 +19,31 @@ from py_reportit.shared.model.meta_tweet import MetaTweet
 from py_reportit.shared.model.meta import Meta
 from py_reportit.shared.model.report import Report
 
+if TYPE_CHECKING:
+    from py_reportit.crawler.post_processors import abstract_pp
+
+
 def extract_ids(reports: list[Report]) -> list[int]:
     return list(map(lambda report: report.id, reports))
 
 def filter_reports_by_state(reports: list[Report], finished: bool) -> list[Report]:
     return list(filter(lambda report: report.status == 'finished' if finished else 'accepted', reports))
 
-def truncate_float(f: float, decimals: int) -> float:
-    return int(f*10**decimals)/10**decimals
+def only_alphas(value: str) -> str:
+    return ''.join(filter(str.isalpha, value))
 
-def reports_are_roughly_equal_by_position(r1: Report, r2: Report, decimals: int) -> bool:
-    return positions_are_rougly_equal(r1.latitude, r1.longitude, r2.latitude, r2.longitude, decimals)
+def find_in_reports_data(title: Optional[str], description: Optional[str], reports_data: list[dict]) -> Optional[dict]:
+    def is_match(report_data: dict):
+        return only_alphas(report_data.get("title")) == only_alphas(title) \
+            and only_alphas(report_data.get("description")) == only_alphas(description)
+    
+    return next(filter(is_match, reports_data), None)
 
-def positions_are_rougly_equal(lat1: float or str, lon1: float or str, lat2: float or str, lon2: float or str, decimals: int) -> bool:
-    lats_are_equal = truncate_float(float(lat1), decimals) == truncate_float(float(lat2), decimals)
-    lons_are_equal = truncate_float(float(lon1), decimals) == truncate_float(float(lon2), decimals)
-
-    return lats_are_equal and lons_are_equal
+def is_last_in_reports_data(report: Report, reports_data: list[dict]) -> bool:
+    try:
+        return bool(find_in_reports_data(report.title, report.description, [reports_data[-1]]))
+    except IndexError:
+        return False
 
 def get_last_tweet_id(report: Report) -> str:
     if report.answers and len(report.answers):

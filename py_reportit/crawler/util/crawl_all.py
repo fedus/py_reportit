@@ -10,7 +10,7 @@ from py_reportit.crawler.service.reportit_api import ReportItService, ReportNotF
 from py_reportit.shared.repository.report import ReportRepository
 from py_reportit.shared.repository.report_answer import ReportAnswerRepository
 
-
+# TODO: Fix - most notably, session injection in repo and reports_data, photo callback
 @inject
 def crawl_all(
     config: dict = Provide["config"],

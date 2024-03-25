@@ -9,13 +9,13 @@ from bs4 import BeautifulSoup
 from bs4.element import ResultSet
 from requests.models import Response
 from requests.sessions import Session
-from toolz.dicttoolz import dissoc
 
 from py_reportit.shared.model.answer_meta import ReportAnswerMeta
 from py_reportit.shared.model.meta import Meta
 from py_reportit.shared.model.report import Report
 from py_reportit.shared.model.report_answer import ReportAnswer
 from py_reportit.shared.service.cache_service import CacheService
+from py_reportit.crawler.util.reportit_utils import find_in_reports_data
 
 logger = logging.getLogger(f"py_reportit.{__name__}")
 
@@ -29,19 +29,22 @@ class ReportItService:
         self.requests_session = requests_session
         self.cache_service = cache_service
 
-    def get_latest_truncated_report(self) -> Report:
+    def get_raw_reports_data(self):
         r = self.requests_session.crawler_get(self.config.get('REPORTIT_API_URL'))
 
         r.raise_for_status()
 
         reports_string_raw = b64decode(re.search(self.config.get('REPORTIT_API_REPORTS_REGEX'), r.text).group(1))
         reports_string_escaped = reports_string_raw.decode('raw_unicode_escape')
-        raw_reports = json.loads(reports_string_escaped)["reports"]
+        return json.loads(reports_string_escaped)["reports"]
 
-        most_recent_report = raw_reports[-1]
-        return Report(**dissoc(most_recent_report, "thumbnail_url"))
-
-    def get_report_with_answers(self, reportId: int, photo_callback: Optional[Callable[[Report, str], None]] = None) -> Report:
+    def get_report_with_answers(
+            self,
+            reportId: int,
+            existing_report: Optional[Report] = None,
+            reports_data: list[dict] = [],
+            photo_callback: Optional[Callable[[Report, str], None]] = None,
+            ) -> Report:
         r = self.fetch_report_page(reportId)
 
         if r.text.find("Sent on :") < 0:
@@ -91,6 +94,17 @@ class ReportItService:
         if len(gps_and_image_urls_selection) == 2:
             # Both GPS position and image
             report_properties["has_photo"] = True
+        
+        if report_properties["latitude"] == None or report_properties["longitude"] == None:
+            if existing_report and existing_report.latitude != None and existing_report.longitude != None:
+                report_properties["latitude"] = existing_report.latitude
+                report_properties["longitude"] = existing_report.longitude
+            else:
+                report_from_reports_data = find_in_reports_data(report_properties["title"], report_properties["description"], reports_data)
+
+                if report_from_reports_data:
+                    report_properties["latitude"] = report_from_reports_data.get("latitude")
+                    report_properties["longitude"] = report_from_reports_data.get("longitude")
 
         report = Report(**report_properties, meta=Meta())
         answers = self.get_answers(reportId, pre_fetched_page=r)

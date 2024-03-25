@@ -19,7 +19,7 @@ from py_reportit.shared.repository.report import ReportRepository
 from py_reportit.shared.repository.report_answer import ReportAnswerRepository
 from py_reportit.crawler.post_processors.abstract_pp import PostProcessorDispatcher
 from py_reportit.crawler.util.reportit_utils import filter_pp,\
-    generate_random_times_between, positions_are_rougly_equal, pretty_format_time
+    generate_random_times_between, is_last_in_reports_data, pretty_format_time
 
 logger = get_task_logger(__name__)
 
@@ -77,9 +77,13 @@ def chained_crawl(
     logger.debug(f"Scheduled for: {current_crawl_item.scheduled_for}")
 
     try:
+        existing_report = report_repository.get_by_id(self.session, current_report_id)
+
         fetched_report = api_service.get_report_with_answers(
             current_report_id,
-            photo_service.process_base64_photo_if_not_downloaded_yet
+            existing_report,
+            current_crawl.reports_data,
+            photo_service.process_base64_photo_if_not_downloaded_yet,
         )
 
         report_repository.update_or_create(self.session, fetched_report)
@@ -92,13 +96,7 @@ def chained_crawl(
 
         run_post_processors.delay(immediate_run=True)
 
-        if positions_are_rougly_equal(
-            fetched_report.latitude,
-            fetched_report.longitude,
-            current_crawl.stop_at_lat,
-            current_crawl.stop_at_lon,
-            5
-        ):
+        if is_last_in_reports_data(fetched_report, current_crawl.reports_data):
             logger.info(f"Stop condition hit at report with id {current_report_id}, not queueing next crawl")
 
             current_crawl_item.stop_condition_hit = True

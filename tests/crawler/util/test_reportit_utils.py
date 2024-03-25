@@ -1,4 +1,6 @@
 from py_reportit.crawler.util.reportit_utils import *
+from py_reportit.shared.model.report import Report
+
 
 test_string_1 = "One two three"
 test_string_2 = "Four five six seven eight nine"
@@ -44,3 +46,31 @@ def test_twitter_wrap_chunks():
     assert wrapped_4[4] == "nic"
     assert wrapped_4[5] == "e"
     assert wrapped_4[6] == "day"
+
+def test_is_last_in_reports_data():
+    reports_data = [
+        {
+            "title": "a",
+            "description": "b"
+        },
+        {
+            "title": "c",
+            "description": "d"
+        },
+        {
+            "title": "ti\ntle",
+            "description": "Public\nlight\tnot\rworking"
+        }
+    ]
+
+    last_report = Report(id=1, title="title", description="Public light not working")
+
+    assert is_last_in_reports_data(last_report, reports_data)
+
+    not_last_report = Report(id=2, title="c", description="d")
+
+    assert not is_last_in_reports_data(not_last_report, reports_data)
+
+    not_existing_report = Report(id=3, title="doesnt", description="exist")
+
+    assert not is_last_in_reports_data(not_existing_report, reports_data)
